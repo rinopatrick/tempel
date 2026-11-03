@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { revealSecret } from "@/secret/reveal";
+import { useRef, useState } from "react";
+import { revealSecret, RevealNetworkError } from "@/secret/reveal";
 
 export type RevealState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "done"; secret: string }
-  | { status: "failed"; message: string };
+  | { status: "failed"; message: string; retry?: boolean };
 
 function fragmentKey(): string {
   return window.location.hash.startsWith("#")
@@ -16,6 +16,7 @@ function fragmentKey(): string {
 }
 
 export function RevealView({ id }: { id: string }) {
+  const attemptedRef = useRef(false);
   const [state, setState] = useState<RevealState>(() => {
     if (typeof window !== "undefined" && fragmentKey().length === 0) {
       return { status: "failed", message: "Link tidak valid." };
@@ -25,14 +26,20 @@ export function RevealView({ id }: { id: string }) {
 
   async function onReveal() {
     if (state.status === "loading" || state.status === "done") return;
+    if (attemptedRef.current) return;
+    attemptedRef.current = true;
     setState({ status: "loading" });
     try {
       const secret = await revealSecret({ id, key: fragmentKey() });
       setState({ status: "done", secret });
     } catch (err) {
+      if (err instanceof RevealNetworkError) {
+        attemptedRef.current = false;
+      }
       setState({
         status: "failed",
         message: err instanceof Error ? err.message : "Gagal membuka link.",
+        retry: err instanceof RevealNetworkError,
       });
     }
   }
@@ -66,6 +73,15 @@ export function RevealView({ id }: { id: string }) {
         <p role="alert" className="text-[17px] text-[#525252]">
           {state.message}
         </p>
+        {state.retry === true ? (
+          <button
+            type="button"
+            onClick={onReveal}
+            className="w-fit bg-[#1A1A1A] px-[18px] py-[18px] text-[15px] font-bold text-white"
+          >
+            Coba lagi
+          </button>
+        ) : null}
       </section>
     );
   }

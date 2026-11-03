@@ -5,6 +5,13 @@ export interface RevealSecretInput {
   key: string;
 }
 
+export class RevealNetworkError extends Error {
+  constructor(message = "Gagal membuka link. Coba lagi.") {
+    super(message);
+    this.name = "RevealNetworkError";
+  }
+}
+
 function validId(id: string): boolean {
   return /^[A-Za-z0-9_-]{1,64}$/.test(id);
 }
@@ -16,9 +23,9 @@ export async function revealSecret({ id, key }: RevealSecretInput): Promise<stri
   }
   let res: Response;
   try {
-    res = await fetch(`/api/secrets/${id}`);
+    res = await fetch(`/api/secrets/${id}`, { cache: "no-store" });
   } catch {
-    throw new Error("Gagal membuka link. Coba lagi.");
+    throw new RevealNetworkError();
   }
   if (res.status === 410) {
     throw new Error("Link hangus.");

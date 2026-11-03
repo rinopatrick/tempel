@@ -33,7 +33,9 @@ describe("revealSecret", () => {
     const secret = await revealSecret({ id: "abc_123", key: KEY });
     expect(secret).toBe("db-prod-9f2k");
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith("/api/secrets/abc_123");
+    expect(fetchMock).toHaveBeenCalledWith("/api/secrets/abc_123", {
+      cache: "no-store",
+    });
     expect(decryptMock).toHaveBeenCalledWith(
       { ciphertext: "Y2k=", iv: "aXY=" },
       KEY,
