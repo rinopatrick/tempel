@@ -1,7 +1,18 @@
-export interface SealedSecret {
+export interface StoredEnvelope {
   ciphertext: string;
-  key: string;
   iv: string;
+}
+
+export type FragmentKey = string & { readonly brand: unique symbol };
+
+export function parseFragmentKey(raw: string): FragmentKey | null {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(raw)) return null;
+  return raw as FragmentKey;
+}
+
+export interface SealedSecret {
+  envelope: StoredEnvelope;
+  key: FragmentKey;
 }
 
 const encoder = new TextEncoder();
@@ -13,9 +24,9 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-function base64ToBytes(base64: string): Uint8Array {
+function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
@@ -32,24 +43,26 @@ export async function encryptSecret(plaintext: string): Promise<SealedSecret> {
   );
   const exported = new Uint8Array(await crypto.subtle.exportKey("raw", key));
   return {
-    ciphertext: bytesToBase64(ciphertext),
-    iv: bytesToBase64(iv),
-    key: bytesToBase64(exported),
+    envelope: { ciphertext: bytesToBase64(ciphertext), iv: bytesToBase64(iv) },
+    key: bytesToBase64(exported) as FragmentKey,
   };
 }
 
-export async function decryptSecret(sealed: SealedSecret): Promise<string> {
-  const key = await crypto.subtle.importKey(
+export async function decryptSecret(
+  envelope: StoredEnvelope,
+  key: FragmentKey,
+): Promise<string> {
+  const imported = await crypto.subtle.importKey(
     "raw",
-    base64ToBytes(sealed.key),
+    base64ToBytes(key),
     { length: 256, name: "AES-GCM" },
     false,
     ["decrypt"],
   );
   const plaintext = await crypto.subtle.decrypt(
-    { iv: base64ToBytes(sealed.iv), name: "AES-GCM" },
-    key,
-    base64ToBytes(sealed.ciphertext),
+    { iv: base64ToBytes(envelope.iv), name: "AES-GCM" },
+    imported,
+    base64ToBytes(envelope.ciphertext),
   );
   return decoder.decode(plaintext);
 }
