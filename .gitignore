@@ -10,3 +10,12 @@ out/
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
+
+# ---> Private: agent config, approved canvas, scraped assets
+CLAUDE.md
+design
+tempel.pen
+embedded-image*.jpg
+screenshot-glideapps.com-*.png
+fonts/
+images/
