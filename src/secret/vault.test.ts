@@ -41,7 +41,7 @@ describe("createSecretVault", () => {
     expect(vault.reveal("id-1")).toBeNull();
   });
 
-  it("keeps a live entry viewable across status checks", async () => {
+  it("keeps a live entry created across status checks", async () => {
     const vault = createSecretVault();
     const sealed = await encryptSecret("db-prod-9f2k");
     vault.store("id-1", sealed.envelope, Date.now() + 60_000);

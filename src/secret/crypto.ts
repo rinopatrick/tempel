@@ -18,14 +18,10 @@ export interface SealedSecret {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-function bytesToBase64(bytes: Uint8Array): string {
+function bytesToBase64Url(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
-function bytesToBase64Url(bytes: Uint8Array): string {
-  return bytesToBase64(bytes)
+  return btoa(binary)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
@@ -58,7 +54,10 @@ export async function encryptSecret(plaintext: string): Promise<SealedSecret> {
   );
   const exported = new Uint8Array(await crypto.subtle.exportKey("raw", key));
   return {
-    envelope: { ciphertext: bytesToBase64(ciphertext), iv: bytesToBase64(iv) },
+    envelope: {
+      ciphertext: bytesToBase64Url(ciphertext),
+      iv: bytesToBase64Url(iv),
+    },
     key: bytesToBase64Url(exported) as FragmentKey,
   };
 }
@@ -75,9 +74,9 @@ export async function decryptSecret(
     ["decrypt"],
   );
   const plaintext = await crypto.subtle.decrypt(
-    { iv: base64ToBytes(envelope.iv), name: "AES-GCM" },
+    { iv: base64UrlToBytes(envelope.iv), name: "AES-GCM" },
     imported,
-    base64ToBytes(envelope.ciphertext),
+    base64UrlToBytes(envelope.ciphertext),
   );
   return decoder.decode(plaintext);
 }

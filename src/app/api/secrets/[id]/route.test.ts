@@ -20,18 +20,20 @@ describe("GET /api/secrets/[id]", () => {
   });
 
   it("returns the envelope on first reveal", async () => {
-    revealMock.mockReturnValue({ ciphertext: "Y2k=", iv: "aXY=" });
-    const res = await GET(getRequest("abc_123"), {
-      params: Promise.resolve({ id: "abc_123" }),
+    const id = "a".repeat(22);
+    revealMock.mockReturnValue({ ciphertext: "Y2k", iv: "aXY" });
+    const res = await GET(getRequest(id), {
+      params: Promise.resolve({ id }),
     });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ciphertext: "Y2k=", iv: "aXY=" });
+    expect(await res.json()).toEqual({ ciphertext: "Y2k", iv: "aXY" });
   });
 
   it("returns 410 on second reveal", async () => {
+    const id = "a".repeat(22);
     revealMock.mockReturnValue(null);
-    const res = await GET(getRequest("abc_123"), {
-      params: Promise.resolve({ id: "abc_123" }),
+    const res = await GET(getRequest(id), {
+      params: Promise.resolve({ id }),
     });
     expect(res.status).toBe(410);
   });
@@ -44,10 +46,19 @@ describe("GET /api/secrets/[id]", () => {
     expect(revealMock).not.toHaveBeenCalled();
   });
 
-  it("returns 410 for an unknown but well-formed id", async () => {
-    revealMock.mockReturnValue(null);
+  it("returns 404 for a well-formed but wrong-length id", async () => {
     const res = await GET(getRequest("abc_123"), {
       params: Promise.resolve({ id: "abc_123" }),
+    });
+    expect(res.status).toBe(404);
+    expect(revealMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 410 for an unknown but well-formed id", async () => {
+    const id = "a".repeat(22);
+    revealMock.mockReturnValue(null);
+    const res = await GET(getRequest(id), {
+      params: Promise.resolve({ id }),
     });
     expect(res.status).toBe(410);
     expect(await res.json()).toEqual({ error: "gone" });

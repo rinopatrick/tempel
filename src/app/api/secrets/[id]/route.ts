@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSharedVault } from "@/secret/vault";
 
 function invalidId(id: unknown): boolean {
-  return typeof id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(id);
+  return typeof id !== "string" || !/^[A-Za-z0-9_-]{22}$/.test(id);
 }
 
 export async function GET(

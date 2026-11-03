@@ -6,6 +6,10 @@ describe("nextSecretState", () => {
     expect(nextSecretState("created", "reveal")).toBe("viewable");
   });
 
+  it("keeps a viewable secret viewable on expiry", () => {
+    expect(nextSecretState("viewable", "expire")).toBe("viewable");
+  });
+
   it("burns a viewable secret on burn", () => {
     expect(nextSecretState("viewable", "burn")).toBe("burned");
   });

@@ -12,7 +12,6 @@ export function nextSecretState(
       return state;
     case "viewable":
       if (event === "burn") return "burned";
-      if (event === "expire") return "expired";
       return state;
     case "burned":
     case "expired":

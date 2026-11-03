@@ -3,14 +3,18 @@ import { getSharedVault } from "@/secret/vault";
 
 const TTL_ALLOWLIST = [3_600, 21_600, 86_400];
 
-function base64Field(value: unknown): boolean {
+function base64UrlField(value: unknown): boolean {
   if (typeof value !== "string" || value.length === 0 || value.length > 100_000) {
     return false;
   }
-  if (value.length % 4 !== 0) return false;
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) return false;
+  let base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = base64.length % 4;
+  if (padding === 1) return false;
+  if (padding > 0) base64 += "=".repeat(4 - padding);
   try {
-    atob(value);
-    return /^[A-Za-z0-9+/]*={0,2}$/.test(value);
+    atob(base64);
+    return true;
   } catch {
     return false;
   }
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "key-rejected" }, { status: 400 });
   }
   const { ciphertext, iv, ttlSeconds } = record;
-  if (!base64Field(ciphertext) || !base64Field(iv)) {
+  if (!base64UrlField(ciphertext) || !base64UrlField(iv)) {
     return NextResponse.json({ error: "bad-envelope" }, { status: 400 });
   }
   let expiresAt: number | undefined;
