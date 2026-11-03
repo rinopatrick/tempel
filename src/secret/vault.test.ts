@@ -27,6 +27,27 @@ describe("createSecretVault", () => {
     expect(vault.status("id-1")).toBe("burned");
   });
 
+  it("reports a burned reason after reveal", async () => {
+    const vault = createSecretVault();
+    const sealed = await encryptSecret("db-prod-9f2k");
+    vault.store("id-1", sealed.envelope);
+    expect(vault.goneReason("id-1")).toBeNull();
+    vault.reveal("id-1");
+    expect(vault.goneReason("id-1")).toBe("burned");
+  });
+
+  it("reports an expired reason past the TTL", async () => {
+    const vault = createSecretVault();
+    const sealed = await encryptSecret("db-prod-9f2k");
+    vault.store("id-1", sealed.envelope, Date.now() - 1000);
+    expect(vault.goneReason("id-1")).toBe("expired");
+  });
+
+  it("reports an unknown reason for missing ids", () => {
+    const vault = createSecretVault();
+    expect(vault.goneReason("missing")).toBe("unknown");
+  });
+
   it("reports null status for unknown ids", () => {
     const vault = createSecretVault();
     expect(vault.status("missing")).toBeNull();

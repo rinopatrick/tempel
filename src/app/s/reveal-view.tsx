@@ -1,12 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { revealSecret, RevealNetworkError } from "@/secret/reveal";
+import {
+  RevealBurnedError,
+  RevealExpiredError,
+  revealSecret,
+  RevealNetworkError,
+} from "@/secret/reveal";
 
 export type RevealState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "done"; secret: string }
+  | { status: "burned" }
+  | { status: "expired" }
   | { status: "failed"; message: string; retry?: boolean };
 
 function fragmentKey(): string {
@@ -36,6 +43,14 @@ export function RevealView({ id }: { id: string }) {
       if (err instanceof RevealNetworkError) {
         attemptedRef.current = false;
       }
+      if (err instanceof RevealBurnedError) {
+        setState({ status: "burned" });
+        return;
+      }
+      if (err instanceof RevealExpiredError) {
+        setState({ status: "expired" });
+        return;
+      }
       setState({
         status: "failed",
         message: err instanceof Error ? err.message : "Gagal membuka link.",
@@ -59,6 +74,34 @@ export function RevealView({ id }: { id: string }) {
             Didekripsi lokal. Salin sekarang.
           </p>
         </div>
+      </section>
+    );
+  }
+
+  if (state.status === "burned") {
+    return (
+      <section aria-label="Hangus" className="flex w-full flex-col gap-6">
+        <p className="text-[13px] font-bold text-[#B25E00]">LINK HANGUS</p>
+        <h1 className="text-4xl font-bold text-[#1A1A1A] md:text-[56px]">
+          Link sudah hangus.
+        </h1>
+        <p className="text-[17px] text-[#525252]">
+          Link ini pernah dibuka. Rahasia dihapus saat itu juga.
+        </p>
+      </section>
+    );
+  }
+
+  if (state.status === "expired") {
+    return (
+      <section aria-label="Kedaluwarsa" className="flex w-full flex-col gap-6">
+        <p className="text-[13px] font-bold text-[#B25E00]">LINK KEDALUWARSA</p>
+        <h1 className="text-4xl font-bold text-[#1A1A1A] md:text-[56px]">
+          Link kedaluwarsa.
+        </h1>
+        <p className="text-[17px] text-[#525252]">
+          Link ini lewat batas waktu. Minta pengirim buat link baru.
+        </p>
       </section>
     );
   }

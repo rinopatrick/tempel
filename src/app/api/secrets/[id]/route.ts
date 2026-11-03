@@ -15,7 +15,8 @@ export async function GET(
   }
   const envelope = getSharedVault().reveal(id);
   if (envelope === null) {
-    return NextResponse.json({ error: "gone" }, { status: 410 });
+    const reason = getSharedVault().goneReason(id);
+    return NextResponse.json({ error: "gone", reason }, { status: 410 });
   }
   return NextResponse.json(envelope);
 }

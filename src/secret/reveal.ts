@@ -12,6 +12,20 @@ export class RevealNetworkError extends Error {
   }
 }
 
+export class RevealBurnedError extends Error {
+  constructor(message = "Link sudah hangus karena pernah dibuka.") {
+    super(message);
+    this.name = "RevealBurnedError";
+  }
+}
+
+export class RevealExpiredError extends Error {
+  constructor(message = "Link kedaluwarsa.") {
+    super(message);
+    this.name = "RevealExpiredError";
+  }
+}
+
 function validId(id: string): boolean {
   return /^[A-Za-z0-9_-]{1,64}$/.test(id);
 }
@@ -28,7 +42,11 @@ export async function revealSecret({ id, key }: RevealSecretInput): Promise<stri
     throw new RevealNetworkError();
   }
   if (res.status === 410) {
-    throw new Error("Link hangus.");
+    const body = (await res.json().catch(() => null)) as {
+      reason?: unknown;
+    } | null;
+    if (body?.reason === "expired") throw new RevealExpiredError();
+    throw new RevealBurnedError();
   }
   if (!res.ok) {
     throw new Error(`Gagal membuka link (HTTP ${res.status}).`);

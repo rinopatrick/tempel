@@ -3,10 +3,13 @@ import { nextSecretState, type SecretState } from "./secret-state";
 
 export const DEFAULT_TTL_MS = 3_600_000;
 
+export type GoneReason = "burned" | "expired" | "unknown";
+
 export interface SecretVault {
   store(id: string, envelope: StoredEnvelope, expiresAt?: number): void;
   reveal(id: string): StoredEnvelope | null;
   status(id: string): SecretState | null;
+  goneReason(id: string): GoneReason | null;
 }
 
 interface VaultEntry {
@@ -44,6 +47,15 @@ export function createSecretVault(): SecretVault {
       if (entry === undefined) return null;
       burnExpired(entry);
       return entry.state;
+    },
+    goneReason(id) {
+      const entry = vault.get(id);
+      if (entry === undefined) return "unknown";
+      burnExpired(entry);
+      if (entry.state === "burned") return "burned";
+      if (entry.state === "expired") return "expired";
+      if (entry.state === "viewable") return "burned";
+      return null;
     },
   };
 }

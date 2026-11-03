@@ -8,7 +8,12 @@ vi.mock("@/secret/reveal", async (importOriginal) => {
   return { ...actual, revealSecret: vi.fn() };
 });
 
-import { revealSecret, RevealNetworkError } from "@/secret/reveal";
+import {
+  revealSecret,
+  RevealBurnedError,
+  RevealExpiredError,
+  RevealNetworkError,
+} from "@/secret/reveal";
 import { RevealView } from "./reveal-view";
 
 const revealMock = vi.mocked(revealSecret);
@@ -86,6 +91,42 @@ describe("<RevealView />", () => {
     );
 
     expect(await screen.findByRole("alert")).not.toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /tampilkan dan hapus link/i }),
+    ).toBeNull();
+  });
+
+  it("shows the burned view after a second open", async () => {
+    const user = userEvent.setup();
+    revealMock.mockRejectedValue(new RevealBurnedError());
+    render(<RevealView id="abc_123" />);
+
+    await user.click(
+      screen.getByRole("button", { name: /tampilkan dan hapus link/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /link sudah hangus/i }),
+    ).not.toBeNull();
+    expect(screen.getByText(/pernah dibuka/i)).not.toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /tampilkan dan hapus link/i }),
+    ).toBeNull();
+  });
+
+  it("shows the expired view past the TTL", async () => {
+    const user = userEvent.setup();
+    revealMock.mockRejectedValue(new RevealExpiredError());
+    render(<RevealView id="abc_123" />);
+
+    await user.click(
+      screen.getByRole("button", { name: /tampilkan dan hapus link/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /link kedaluwarsa/i }),
+    ).not.toBeNull();
+    expect(screen.getByText(/batas waktu/i)).not.toBeNull();
     expect(
       screen.queryByRole("button", { name: /tampilkan dan hapus link/i }),
     ).toBeNull();

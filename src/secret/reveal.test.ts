@@ -7,7 +7,11 @@ vi.mock("./crypto", async (importOriginal) => {
 });
 
 import { decryptSecret } from "./crypto";
-import { revealSecret } from "./reveal";
+import {
+  RevealBurnedError,
+  RevealExpiredError,
+  revealSecret,
+} from "./reveal";
 
 const decryptMock = vi.mocked(decryptSecret);
 const KEY = "A".repeat(43) as FragmentKey;
@@ -60,13 +64,39 @@ describe("revealSecret", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("throws a burned error on a 410 envelope", async () => {
+  it("throws a burned error on a burned 410", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({ error: "gone", reason: "burned" }, 410),
+      ),
+    );
+    await expect(revealSecret({ id: "abc_123", key: KEY })).rejects.toThrow(
+      RevealBurnedError,
+    );
+    expect(decryptMock).not.toHaveBeenCalled();
+  });
+
+  it("throws an expired error on an expired 410", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({ error: "gone", reason: "expired" }, 410),
+      ),
+    );
+    await expect(revealSecret({ id: "abc_123", key: KEY })).rejects.toThrow(
+      RevealExpiredError,
+    );
+    expect(decryptMock).not.toHaveBeenCalled();
+  });
+
+  it("defaults a reason-less 410 to burned", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => jsonResponse({ error: "gone" }, 410)),
     );
     await expect(revealSecret({ id: "abc_123", key: KEY })).rejects.toThrow(
-      /hangus/i,
+      RevealBurnedError,
     );
     expect(decryptMock).not.toHaveBeenCalled();
   });
