@@ -10,16 +10,13 @@ export interface SecretVault {
 }
 
 interface VaultEntry {
-  envelope: StoredEnvelope | null;
+  envelope: StoredEnvelope;
   state: SecretState;
   expiresAt: number;
 }
 
 function burnExpired(entry: VaultEntry): void {
-  if (entry.state === "created" && Date.now() >= entry.expiresAt) {
-    entry.envelope = null;
-    entry.state = nextSecretState("created", "expire");
-  }
+  if (entry.envelope !== null) return;
 }
 
 export function createSecretVault(): SecretVault {
@@ -34,7 +31,7 @@ export function createSecretVault(): SecretVault {
       burnExpired(entry);
       const viewable = nextSecretState(entry.state, "reveal");
       if (viewable !== "viewable") return null;
-      const envelope = entry.envelope === null ? null : { ...entry.envelope };
+      const envelope = { ...entry.envelope };
       entry.envelope = null;
       entry.state = nextSecretState(viewable, "burn");
       return envelope;
