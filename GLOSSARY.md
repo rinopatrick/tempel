@@ -41,6 +41,9 @@ mendekripsi secara lokal.
 
 Penghapusan Ciphertext di server secara atomik pada saat reveal, sehingga
 link hanya bisa dibuka satu kali. Setelah Burn, Secret berstate `Burned`.
+Store saat ini adalah memori single-instance: reset saat restart, tanpa
+garansi burn lintas replika. Store persisten menyusul tanpa mengubah kontrak
+API ini.
 
 ## Reveal
 

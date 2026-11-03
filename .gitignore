@@ -9,3 +9,4 @@ out/
 # ---> Misc
 *.log
 .DS_Store
+tsconfig.tsbuildinfo

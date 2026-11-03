@@ -37,6 +37,8 @@ export function createSecretVault(): SecretVault {
 
 const sharedVault = createSecretVault();
 
+// Single-instance memory only. Resets on restart, no cross-replica burn
+// guarantee. A persistent store follows without changing this contract.
 export function getSharedVault(): SecretVault {
   return sharedVault;
 }
