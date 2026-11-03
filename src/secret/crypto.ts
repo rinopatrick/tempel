@@ -24,11 +24,26 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+function bytesToBase64Url(bytes: Uint8Array): string {
+  return bytesToBase64(bytes)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
 function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   const binary = atob(base64);
   const bytes = new Uint8Array(new ArrayBuffer(binary.length));
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return bytes;
+}
+
+function base64UrlToBytes(base64url: string): Uint8Array<ArrayBuffer> {
+  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = base64.length % 4;
+  if (padding === 1) throw new Error("bad fragment key encoding");
+  if (padding > 0) base64 += "=".repeat(4 - padding);
+  return base64ToBytes(base64);
 }
 
 export async function encryptSecret(plaintext: string): Promise<SealedSecret> {
@@ -44,7 +59,7 @@ export async function encryptSecret(plaintext: string): Promise<SealedSecret> {
   const exported = new Uint8Array(await crypto.subtle.exportKey("raw", key));
   return {
     envelope: { ciphertext: bytesToBase64(ciphertext), iv: bytesToBase64(iv) },
-    key: bytesToBase64(exported) as FragmentKey,
+    key: bytesToBase64Url(exported) as FragmentKey,
   };
 }
 
@@ -54,7 +69,7 @@ export async function decryptSecret(
 ): Promise<string> {
   const imported = await crypto.subtle.importKey(
     "raw",
-    base64ToBytes(key),
+    base64UrlToBytes(key),
     { length: 256, name: "AES-GCM" },
     false,
     ["decrypt"],

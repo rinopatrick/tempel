@@ -26,4 +26,13 @@ describe("secret crypto", () => {
     expect(parseFragmentKey("short")).toBeNull();
     expect(parseFragmentKey("A".repeat(43) + "!")).toBeNull();
   });
+
+  it("emits a fragment-safe key that parses back", async () => {
+    const sealed = await encryptSecret("db-prod-9f2k");
+    expect(sealed.key).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(parseFragmentKey(sealed.key)).toBe(sealed.key);
+    await expect(decryptSecret(sealed.envelope, sealed.key)).resolves.toBe(
+      "db-prod-9f2k",
+    );
+  });
 });
