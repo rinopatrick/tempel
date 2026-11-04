@@ -55,9 +55,8 @@ describe("createFileVault (persistent store)", () => {
     createFileVault(path).store("id-1", sealed.envelope, Date.now() + 60_000);
     // Two handles over the same file, serialized only by the IMMEDIATE
     // transaction + conditional burn UPDATE. Sequential here because JS is
-    // single-threaded; true process-level proof lives in the route test
-    // below (fresh vault per request, real HTTP concurrency via server).
-    // This pins the single-winner invariant at the vault seam.
+    // single-threaded; the worker-thread race below proves it across
+    // threads. This pins the single-winner invariant at the vault seam.
     const first = createFileVault(path);
     const second = createFileVault(path);
     const results = await Promise.all([
@@ -67,6 +66,54 @@ describe("createFileVault (persistent store)", () => {
     const wins = results.filter((r) => r !== null);
     expect(wins).toHaveLength(1);
     expect(wins[0]).toEqual(sealed.envelope);
+    expect(createFileVault(path).goneReason("id-1")).toBe("burned");
+  });
+
+  it("lets exactly one racer win across worker threads on one file", async () => {
+    const path = tmpDb();
+    const sealed = await encryptSecret("db-prod-9f2k");
+    createFileVault(path).store("id-1", sealed.envelope, Date.now() + 60_000);
+    const RACERS = 8;
+    const gate = new SharedArrayBuffer(4);
+    const flag = new Int32Array(gate);
+    const workerSource = [
+      "const { workerData } = require('node:worker_threads');",
+      "const { DatabaseSync } = require('node:sqlite');",
+      "const flag = new Int32Array(workerData.gate);",
+      "Atomics.wait(flag, 0, 0);",
+      "const db = new DatabaseSync(workerData.dbPath);",
+      "db.exec('PRAGMA journal_mode = WAL');",
+      "db.exec('PRAGMA busy_timeout = 10000');",
+      "const row = db.prepare('SELECT ciphertext, iv FROM secrets WHERE id = ? AND state = ?').get(workerData.id, 'created');",
+      "db.exec('BEGIN IMMEDIATE');",
+      "let won = false;",
+      "try {",
+      "  const burned = db.prepare(\"UPDATE secrets SET ciphertext = '', iv = '', state = 'burned' WHERE id = ? AND state = 'created' AND expires_at > ?\").run(workerData.id, Date.now());",
+      "  won = Number(burned.changes) === 1;",
+      "  db.exec('COMMIT');",
+      "} catch { db.exec('ROLLBACK'); }",
+      "require('node:worker_threads').parentPort.postMessage(won && row ? 'WIN' : 'LOSE');",
+    ].join("\n");
+    const { Worker } = await import("node:worker_threads");
+    const racers = Array.from({ length: RACERS }, () => {
+      const worker = new Worker(workerSource, {
+        eval: true,
+        workerData: { dbPath: path, gate, id: "id-1" },
+      });
+      return new Promise<string>((resolve, reject) => {
+        worker.once("message", (value: unknown) => {
+          resolve(value as string);
+          void worker.terminate();
+        });
+        worker.once("error", reject);
+      });
+    });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    Atomics.store(flag, 0, 1);
+    Atomics.notify(flag, 0, RACERS);
+    const results = await Promise.all(racers);
+    expect(results.filter((r) => r === "WIN")).toHaveLength(1);
+    expect(results.filter((r) => r === "LOSE")).toHaveLength(RACERS - 1);
     expect(createFileVault(path).goneReason("id-1")).toBe("burned");
   });
 
