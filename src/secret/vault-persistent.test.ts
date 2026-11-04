@@ -73,41 +73,64 @@ describe("createFileVault (persistent store)", () => {
     const path = tmpDb();
     const sealed = await encryptSecret("db-prod-9f2k");
     createFileVault(path).store("id-1", sealed.envelope, Date.now() + 60_000);
-    const RACERS = 8;
-    const gate = new SharedArrayBuffer(4);
-    const flag = new Int32Array(gate);
-    const workerSource = [
-      "const { workerData } = require('node:worker_threads');",
-      "const { DatabaseSync } = require('node:sqlite');",
-      "const flag = new Int32Array(workerData.gate);",
-      "Atomics.wait(flag, 0, 0);",
-      "const db = new DatabaseSync(workerData.dbPath);",
-      "db.exec('PRAGMA journal_mode = WAL');",
-      "db.exec('PRAGMA busy_timeout = 10000');",
-      "const row = db.prepare('SELECT ciphertext, iv FROM secrets WHERE id = ? AND state = ?').get(workerData.id, 'created');",
-      "db.exec('BEGIN IMMEDIATE');",
-      "let won = false;",
-      "try {",
-      "  const burned = db.prepare(\"UPDATE secrets SET ciphertext = '', iv = '', state = 'burned' WHERE id = ? AND state = 'created' AND expires_at > ?\").run(workerData.id, Date.now());",
-      "  won = Number(burned.changes) === 1;",
-      "  db.exec('COMMIT');",
-      "} catch { db.exec('ROLLBACK'); }",
-      "require('node:worker_threads').parentPort.postMessage(won && row ? 'WIN' : 'LOSE');",
-    ].join("\n");
+    // Racers drive the real reveal seam: each thread requires a bundle of
+    // the vault module and calls createFileVault(dbPath).reveal(id). The
+    // burn SQL lives only in vault.ts, so this test survives refactors of
+    // the statements and transactions underneath.
+    const dir = mkdtempSync(join(tmpdir(), "tempel-race-"));
+    const bundle = join(dir, "vault.cjs");
+    // esbuild refuses to run inside the jsdom test realm (its Uint8Array
+    // invariant check fails there), so the bundle builds in a worker
+    // thread, which runs real Node. One build, then N racers require it.
     const { Worker } = await import("node:worker_threads");
-    const racers = Array.from({ length: RACERS }, () => {
-      const worker = new Worker(workerSource, {
-        eval: true,
-        workerData: { dbPath: path, gate, id: "id-1" },
-      });
-      return new Promise<string>((resolve, reject) => {
+    const runWorker = <T>(source: string, workerData: object): Promise<T> =>
+      new Promise<T>((resolve, reject) => {
+        const worker = new Worker(source, { eval: true, workerData });
         worker.once("message", (value: unknown) => {
-          resolve(value as string);
+          resolve(value as T);
           void worker.terminate();
         });
         worker.once("error", reject);
       });
-    });
+    await runWorker<string>(
+      [
+        "const { workerData, parentPort } = require('node:worker_threads');",
+        "require('esbuild').buildSync({",
+        "  entryPoints: [workerData.entry],",
+        "  bundle: true,",
+        "  platform: 'node',",
+        "  format: 'cjs',",
+        "  outfile: workerData.outfile,",
+        "  external: ['node:sqlite'],",
+        "  absWorkingDir: workerData.cwd,",
+        "});",
+        "parentPort.postMessage('built');",
+      ].join("\n"),
+      {
+        entry: "src/secret/vault.ts",
+        outfile: bundle,
+        cwd: process.cwd(),
+      },
+    );
+    const RACERS = 8;
+    const gate = new SharedArrayBuffer(4);
+    const flag = new Int32Array(gate);
+    const workerSource = [
+      "const { workerData, parentPort } = require('node:worker_threads');",
+      "const flag = new Int32Array(workerData.gate);",
+      "Atomics.wait(flag, 0, 0);",
+      "const { createFileVault } = require(workerData.bundle);",
+      "const got = createFileVault(workerData.dbPath).reveal(workerData.id);",
+      "parentPort.postMessage(got === null ? 'LOSE' : 'WIN');",
+    ].join("\n");
+    const racers = Array.from({ length: RACERS }, () =>
+      runWorker<string>(workerSource, {
+        bundle,
+        dbPath: path,
+        gate,
+        id: "id-1",
+      }),
+    );
     await new Promise((resolve) => setTimeout(resolve, 500));
     Atomics.store(flag, 0, 1);
     Atomics.notify(flag, 0, RACERS);
