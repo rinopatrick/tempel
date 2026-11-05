@@ -45,19 +45,21 @@ describe("POST /api/secrets", () => {
     );
   });
 
-  it("rejects a key-bearing payload with 400", async () => {
+  it("rejects a key-bearing payload with 400 key-rejected", async () => {
     const res = await POST(
       jsonRequest({ ciphertext: "Y2k", iv: "aXY", key: "k" }),
     );
     expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "key-rejected" });
     expect(storeMock).not.toHaveBeenCalled();
   });
 
-  it("rejects a plaintext-bearing payload with 400", async () => {
+  it("rejects a plaintext-bearing payload with 400 key-rejected", async () => {
     const res = await POST(
       jsonRequest({ ciphertext: "Y2k", iv: "aXY", plaintext: "x" }),
     );
     expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "key-rejected" });
     expect(storeMock).not.toHaveBeenCalled();
   });
 
