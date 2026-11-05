@@ -48,6 +48,33 @@ describe("routes against the persistent store", () => {
     expect(await second.json()).toEqual({ error: "gone", reason: "burned" });
   });
 
+  it("burns an expired entry on reveal against the persistent store", async () => {
+    const realNow = Date.now;
+    try {
+      // POST at T0 with the shortest allowlisted TTL, then advance past
+      // it: proves the POST-computed expires_at actually lapses.
+      (Date as unknown as { now: () => number }).now = () => realNow();
+      const created = await POST(
+        jsonRequest({ ciphertext: "Y2k", iv: "aXY", ttlSeconds: 3_600 }),
+      );
+      expect(created.status).toBe(201);
+      const { id } = (await created.json()) as { id: string };
+      (Date as unknown as { now: () => number }).now =
+        () => realNow() + 3_601 * 1000;
+
+      resetSharedVault();
+      const res = await GET(
+        new Request(`http://localhost/api/secrets/${id}`),
+        { params: Promise.resolve({ id }) },
+      );
+      expect(res.status).toBe(410);
+      expect(await res.json()).toEqual({ error: "gone", reason: "expired" });
+    } finally {
+      (Date as unknown as { now: () => number }).now = realNow;
+      resetSharedVault();
+    }
+  });
+
   it("returns 410 unknown for an id that was never stored", async () => {
     const id = "a".repeat(22);
     const res = await GET(new Request(`http://localhost/api/secrets/${id}`), {
