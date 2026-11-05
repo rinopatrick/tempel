@@ -47,4 +47,20 @@ describe("routes against the persistent store", () => {
     expect(second.status).toBe(410);
     expect(await second.json()).toEqual({ error: "gone", reason: "burned" });
   });
+
+  it("returns 410 unknown for an id that was never stored", async () => {
+    const id = "a".repeat(22);
+    const res = await GET(new Request(`http://localhost/api/secrets/${id}`), {
+      params: Promise.resolve({ id }),
+    });
+    expect(res.status).toBe(410);
+    expect(await res.json()).toEqual({ error: "gone", reason: "unknown" });
+  });
+
+  it("returns 404 for a bad id without touching the store", async () => {
+    const res = await GET(new Request("http://localhost/api/secrets/bad!id"), {
+      params: Promise.resolve({ id: "bad!id" }),
+    });
+    expect(res.status).toBe(404);
+  });
 });
