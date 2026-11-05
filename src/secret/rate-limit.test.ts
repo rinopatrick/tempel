@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import {
   RATE_LIMIT_GET_PER_MINUTE,
   RATE_LIMIT_POST_PER_MINUTE,
+  RATE_LIMIT_WINDOW_MS,
   checkRateLimit,
   clientIp,
   resetRateLimits,
@@ -43,6 +44,18 @@ describe("rate limit", () => {
     expect(checkRateLimit("3.3.3.3", "post-secret").allowed).toBe(false);
     expect(checkRateLimit("4.4.4.4", "post-secret").allowed).toBe(true);
     expect(checkRateLimit("3.3.3.3", "get-secret").allowed).toBe(true);
+  });
+
+  it("re-allows traffic after the window slides past", () => {
+    const t0 = 1_000_000;
+    for (let i = 0; i < RATE_LIMIT_POST_PER_MINUTE; i += 1) {
+      expect(checkRateLimit("9.9.9.9", "post-secret", t0).allowed).toBe(true);
+    }
+    expect(checkRateLimit("9.9.9.9", "post-secret", t0).allowed).toBe(false);
+    expect(
+      checkRateLimit("9.9.9.9", "post-secret", t0 + RATE_LIMIT_WINDOW_MS + 1)
+        .allowed,
+    ).toBe(true);
   });
 
   it("prefers the first forwarded address", () => {
