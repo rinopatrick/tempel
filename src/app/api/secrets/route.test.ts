@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { resetRateLimits } from "@/secret/rate-limit";
 
 const storeMock = vi.fn();
 const revealMock = vi.fn();
@@ -25,6 +26,7 @@ function jsonRequest(body: unknown): Request {
 describe("POST /api/secrets", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetRateLimits();
   });
   it("stores the envelope and returns a server-generated id", async () => {
     const res = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
@@ -79,6 +81,17 @@ describe("POST /api/secrets", () => {
     );
     expect(res.status).toBe(400);
     expect(storeMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 with Retry-After on POST flood without store touch", async () => {
+    for (let i = 0; i < 10; i += 1) {
+      await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
+    }
+    const res = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).not.toBeNull();
+    expect(await res.json()).toEqual({ error: "rate-limited" });
+    expect(storeMock).toHaveBeenCalledTimes(10);
   });
 
   it("accepts an allowlisted ttl and stores the derived expiry", async () => {

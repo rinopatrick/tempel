@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, clientIp } from "@/secret/rate-limit";
 import { getSharedVault } from "@/secret/vault";
 
 const TTL_ALLOWLIST = [3_600, 21_600, 86_400];
@@ -31,6 +32,16 @@ function newId(): string {
 }
 
 export async function POST(request: Request) {
+  const limited = checkRateLimit(clientIp(request), "post-secret");
+  if (!limited.allowed) {
+    return NextResponse.json(
+      { error: "rate-limited" },
+      {
+        headers: { "Retry-After": String(limited.retryAfterSeconds) },
+        status: 429,
+      },
+    );
+  }
   let body: unknown;
   try {
     body = await request.json();

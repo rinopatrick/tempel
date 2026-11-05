@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/secret/rate-limit";
 
 const revealMock = vi.fn();
 const goneReasonMock = vi.fn();
@@ -19,6 +20,7 @@ function getRequest(id: string): Request {
 describe("GET /api/secrets/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetRateLimits();
     goneReasonMock.mockReturnValue("burned");
   });
 
@@ -59,6 +61,21 @@ describe("GET /api/secrets/[id]", () => {
     expect(res.status).toBe(404);
     expect(revealMock).not.toHaveBeenCalled();
     expect(goneReasonMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 with Retry-After on GET flood without vault touch", async () => {
+    const id = "a".repeat(22);
+    revealMock.mockReturnValue({ ciphertext: "Y2k", iv: "aXY" });
+    for (let i = 0; i < 60; i += 1) {
+      await GET(getRequest(id), { params: Promise.resolve({ id }) });
+    }
+    const res = await GET(getRequest(id), {
+      params: Promise.resolve({ id }),
+    });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).not.toBeNull();
+    expect(await res.json()).toEqual({ error: "rate-limited" });
+    expect(revealMock).toHaveBeenCalledTimes(60);
   });
 
   it("returns 410 with an expired reason past the TTL", async () => {
