@@ -1,5 +1,7 @@
 // Live probe: file-based bodies only, no inline quoting.
-// Usage: node scripts/live-probe.mjs [baseUrl]
+// Usage: TEMPEL_PROBE_SEED=1 node scripts/live-probe.mjs [baseUrl]
+// The expired check needs POST /api/seed-expired, which answers 404
+// unless the server runs with TEMPEL_PROBE_SEED=1.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -66,6 +68,49 @@ check(
   "400 key-rejected",
   keyRejected.status === 400 && keyJson.error === "key-rejected",
   `status=${keyRejected.status} body=${JSON.stringify(keyJson)}`,
+);
+
+// Expired: shortest allowlisted TTL then reveal with the clock past it is
+// not observable live, so seed a past-expiry row directly in the file
+// store and prove reveal reports 410 expired (TTL path, not Burned).
+const ID_LEN = 22;
+const expiredId = "e".repeat(ID_LEN);
+const seed = await fetch(`${base}/api/seed-expired`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ id: expiredId }),
+});
+if (seed.status === 404) {
+  check("410 expired", false, "seed route missing: expected POST /api/seed-expired");
+} else {
+  const expired = await fetch(`${base}/api/secrets/${expiredId}`);
+  const expiredJson = await expired.json().catch(() => ({}));
+  check(
+    "410 expired",
+    expired.status === 410 && expiredJson.reason === "expired",
+    `status=${expired.status} body=${JSON.stringify(expiredJson)}`,
+  );
+}
+
+// Flood: fresh test IP so the earlier probe POSTs stay out of budget.
+// POST budget is 10 per minute: 10 warmups fill it, the 11th must 429.
+const POST_BUDGET = 10;
+const floodIp = "203.0.113.99";
+let floodRes = null;
+for (let i = 0; i <= POST_BUDGET; i += 1) {
+  floodRes = await fetch(`${base}/api/secrets`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": floodIp },
+    body,
+  });
+  await floodRes.text().catch(() => "");
+}
+check(
+  "429 flood with Retry-After",
+  floodRes !== null &&
+    floodRes.status === 429 &&
+    floodRes.headers.get("retry-after") !== null,
+  `status=${floodRes?.status} retry-after=${floodRes?.headers.get("retry-after")}`,
 );
 
 for (const r of results) console.log(`${r.pass ? "PASS" : "FAIL"} ${r.name} :: ${r.detail}`);
