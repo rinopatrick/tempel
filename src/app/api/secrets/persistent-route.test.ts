@@ -38,6 +38,7 @@ describe("routes against the persistent store", () => {
       params: Promise.resolve({ id }),
     });
     expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ ciphertext: "Y2k", iv: "aXY" });
 
     resetSharedVault();
     const second = await GET(
@@ -62,5 +63,13 @@ describe("routes against the persistent store", () => {
       params: Promise.resolve({ id: "bad!id" }),
     });
     expect(res.status).toBe(404);
+  });
+
+  it("rejects a key-bearing envelope with 400 key-rejected", async () => {
+    const res = await POST(
+      jsonRequest({ ciphertext: "Y2k", iv: "aXY", key: "k" }),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "key-rejected" });
   });
 });
