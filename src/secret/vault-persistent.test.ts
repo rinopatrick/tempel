@@ -36,7 +36,10 @@ describe("createFileVault (persistent store)", () => {
     const sealed = await encryptSecret("db-prod-9f2k");
     createFileVault(path).store("id-1", sealed.envelope, Date.now() - 1000);
     const reopened = createFileVault(path);
+    // Reveal first on a fresh handle: pins the reveal path itself burns
+    // expired rows, since status() would also burn them via burnIfExpired.
     expect(reopened.reveal("id-1")).toBeNull();
+    expect(reopened.status("id-1")).toBe("expired");
     expect(reopened.goneReason("id-1")).toBe("expired");
   });
 
