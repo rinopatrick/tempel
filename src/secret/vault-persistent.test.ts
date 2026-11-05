@@ -31,6 +31,18 @@ describe("createFileVault (persistent store)", () => {
     expect(createFileVault(path).goneReason("id-1")).toBe("burned");
   });
 
+  it("burns an expired entry on status check and reports expired", async () => {
+    const path = tmpDb();
+    const sealed = await encryptSecret("db-prod-9f2k");
+    createFileVault(path).store("id-1", sealed.envelope, Date.now() - 1000);
+    // Status first on a fresh handle: pins the status path itself
+    // lazy-burns, before any reveal call.
+    const reopened = createFileVault(path);
+    expect(reopened.status("id-1")).toBe("expired");
+    expect(reopened.goneReason("id-1")).toBe("expired");
+    expect(reopened.reveal("id-1")).toBeNull();
+  });
+
   it("expires across restart with an expired reason", async () => {
     const path = tmpDb();
     const sealed = await encryptSecret("db-prod-9f2k");
