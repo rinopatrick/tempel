@@ -11,6 +11,9 @@ out/
 .DS_Store
 tsconfig.tsbuildinfo
 
+# ---> Tempel secrets store (SQLite file)
+data/
+
 # ---> Private: agent config, approved canvas, scraped assets
 CLAUDE.md
 design
