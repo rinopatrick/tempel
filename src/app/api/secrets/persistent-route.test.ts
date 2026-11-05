@@ -58,6 +58,38 @@ describe("routes against the persistent store", () => {
     expect(await res.json()).toEqual({ error: "gone", reason: "unknown" });
   });
 
+  it("wins once end to end: first reveal 200, second 410 burned, unknown 410", async () => {
+    const created = await POST(
+      jsonRequest({ ciphertext: "Y2k", iv: "aXY", ttlSeconds: 3_600 }),
+    );
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+
+    const first = await GET(new Request(`http://localhost/api/secrets/${id}`), {
+      params: Promise.resolve({ id }),
+    });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ ciphertext: "Y2k", iv: "aXY" });
+
+    const second = await GET(
+      new Request(`http://localhost/api/secrets/${id}`),
+      { params: Promise.resolve({ id }) },
+    );
+    expect(second.status).toBe(410);
+    expect(await second.json()).toEqual({ error: "gone", reason: "burned" });
+
+    const foreign = `f${"o".repeat(21)}`;
+    const unknown = await GET(
+      new Request(`http://localhost/api/secrets/${foreign}`),
+      { params: Promise.resolve({ id: foreign }) },
+    );
+    expect(unknown.status).toBe(410);
+    expect(await unknown.json()).toEqual({
+      error: "gone",
+      reason: "unknown",
+    });
+  });
+
   it("returns 404 for a bad id without touching the store", async () => {
     const res = await GET(new Request("http://localhost/api/secrets/bad!id"), {
       params: Promise.resolve({ id: "bad!id" }),
