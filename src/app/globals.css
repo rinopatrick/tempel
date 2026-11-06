@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+:root {
+  --tempel-sans: "Inter", system-ui, sans-serif;
+  --tempel-mono: "IBM Plex Mono", system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--tempel-sans);
+}

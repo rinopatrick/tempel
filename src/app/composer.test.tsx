@@ -65,6 +65,15 @@ describe("<Composer />", () => {
     expect(await screen.findByText(/gagal/i)).not.toBeNull();
   });
 
+  it("uses the canvas body font and mono stacks", async () => {
+    const { readFileSync } = await import("node:fs");
+    const globalsCss = readFileSync("src/app/globals.css", "utf8");
+    expect(globalsCss).toMatch(/Inter/);
+    expect(globalsCss).toMatch(/IBM Plex Mono/);
+    const layoutTsx = readFileSync("src/app/layout.tsx", "utf8");
+    expect(layoutTsx).toMatch(/fonts\.googleapis/);
+  });
+
   it("shows an error when copying fails", async () => {
     const user = userEvent.setup();
     const key = "A".repeat(43);
