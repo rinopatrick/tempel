@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 160" role="img" aria-labelledby="tempelLockupTitle tempelLockupDesc">
+  <title id="tempelLockupTitle">Tempel logo</title>
+  <desc id="tempelLockupDesc">Tempel wordmark beside the broken link mark on white.</desc>
+  <rect width="512" height="160" rx="32" fill="#FFFFFF"/>
+  <g transform="translate(24 24)">
+    <rect width="112" height="112" rx="26" fill="#0E7A4F"/>
+    <g fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round">
+      <path d="M34 64 L49 49 L61 61"/>
+      <path d="M78 48 L63 63 L51 51"/>
+    </g>
+    <circle cx="73" cy="39" r="4.4" fill="#FFFFFF"/>
+    <circle cx="73" cy="39" r="2" fill="#0E7A4F"/>
+    <g fill="#FFFFFF">
+      <circle cx="56" cy="56" r="1.6"/>
+      <circle cx="61" cy="51" r="1.2"/>
+      <circle cx="51" cy="61" r="1.2"/>
+    </g>
+  </g>
+  <text x="152" y="86" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="52" font-weight="700" letter-spacing="-1" fill="#1A1A1A">Tempel</text>
+  <text x="153" y="114" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" font-weight="600" letter-spacing="3.5" fill="#0E7A4F">BURN AFTER READ</text>
+</svg>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Inter:wght@100..900&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:#fff;color:#1A1A1A}
+.wrap{max-width:900px;margin:0 auto;padding:24px}
+.eyebrow{font-size:13px;font-weight:700;color:#0E7A4F}
+.eyebrow-amber{font-size:13px;font-weight:700;color:#B25E00}
+h1{font-size:56px;margin:16px 0}
+.sub{font-size:17px;color:#525252}
+.card{background:#F4F4F2;padding:32px;margin-top:24px}
+.secret{font-family:"IBM Plex Mono",system-ui,sans-serif;font-size:16px;color:#1A1A1A}
+.note{font-size:14px;color:#525252}
+.btn{background:#1A1A1A;color:#fff;font-size:15px;font-weight:700;padding:16px}
+.meta{font-family:"IBM Plex Mono",system-ui,sans-serif;font-size:13px;color:#525252}
+</style>
+</head>
+<body>
+<div class="wrap" id="idle">
+<p class="eyebrow">ZERO-KNOWLEDGE SECRET SHARING</p>
+<h1>Kirim rahasia. Link hangus sekali buka.</h1>
+<p class="sub">Browser enkripsi sebelum kirim. Server simpan ciphertext saja. Kunci ada di URL dan tidak pernah terkirim.</p>
+<div class="card">
+<p class="secret">Tempel password atau API key di sini</p>
+<p class="meta">burn-after-read | kedaluwarsa 1 jam | buka 1x</p>
+<p><span class="btn">Buat link rahasia</span></p>
+</div>
+</div>
+<div class="wrap" id="done">
+<p class="eyebrow">LINK HANGUS</p>
+<h1>Rahasia terbuka. Link sudah hangus.</h1>
+<div class="card">
+<p class="secret">db-prod-9f2k</p>
+<p class="note">Didekripsi lokal. Salin sekarang.</p>
+</div>
+</div>
+</body>
+</html>

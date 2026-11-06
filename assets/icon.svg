@@ -1,4 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#d97706"/>
-  <text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="32" font-weight="600" fill="#ffffff">T</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="tempelLogoTitle tempelLogoDesc">
+  <title id="tempelLogoTitle">Tempel logo</title>
+  <desc id="tempelLogoDesc">A chain link that snaps into two halves with an ember at the break, the mark of a link that burns on first open.</desc>
+  <rect width="256" height="256" rx="56" fill="#0E7A4F"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round">
+    <path d="M78 146 L112 112 L140 140"/>
+    <path d="M178 110 L144 144 L116 116"/>
+  </g>
+  <circle cx="167" cy="89" r="10" fill="#FFFFFF"/>
+  <circle cx="167" cy="89" r="4.5" fill="#0E7A4F"/>
+  <g fill="#FFFFFF">
+    <circle cx="128" cy="128" r="3.5"/>
+    <circle cx="140" cy="117" r="2.8"/>
+    <circle cx="117" cy="139" r="2.8"/>
+  </g>
 </svg>

@@ -3,7 +3,8 @@ import Composer from "./composer";
 export default function Home() {
   return (
     <main className="bg-white">
-      <nav className="p-5">
+      <nav className="flex items-center gap-3 p-5">
+        <img src="/icon.svg" width={32} height={32} alt="Tempel logo" />
         <div className="text-[22px] font-bold text-[#1A1A1A]">Tempel</div>
       </nav>
       <section className="flex flex-col gap-6 p-6 md:p-24">
