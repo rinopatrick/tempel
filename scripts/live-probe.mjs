@@ -21,6 +21,14 @@ function check(name, cond, detail) {
   results.push({ name, pass: Boolean(cond), detail });
 }
 
+const health = await fetch(`${base}/api/health`);
+const healthJson = await health.json().catch(() => ({}));
+check(
+  "health 200 ok",
+  health.status === 200 && healthJson.status === "ok",
+  `status=${health.status} body=${JSON.stringify(healthJson)}`,
+);
+
 const created = await fetch(`${base}/api/secrets`, {
   method: "POST",
   headers: { "content-type": "application/json" },
