@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: "Tempel — Kirim rahasia. Link hangus sekali buka.",
   description:
     "Browser enkripsi sebelum kirim. Server simpan ciphertext saja. Kunci ada di URL dan tidak pernah terkirim.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
