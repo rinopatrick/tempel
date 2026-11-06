@@ -48,6 +48,15 @@ export function checkRateLimit(
 }
 
 export function clientIp(request: Request): string {
+  const cloudflare = request.headers.get("cf-connecting-ip");
+  if (cloudflare !== null && cloudflare.trim().length > 0) {
+    return cloudflare.trim();
+  }
+  const vercel = request.headers.get("x-vercel-forwarded-for");
+  if (vercel !== null) {
+    const first = vercel.split(",")[0].trim();
+    if (first.length > 0) return first;
+  }
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded !== null) {
     const first = forwarded.split(",")[0].trim();

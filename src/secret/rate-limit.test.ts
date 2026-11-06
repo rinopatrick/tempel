@@ -64,4 +64,24 @@ describe("rate limit", () => {
     });
     expect(clientIp(req)).toBe("5.5.5.5");
   });
+
+  it("prefers CF-Connecting-IP over a spoofed forwarded chain", () => {
+    const req = new Request("http://localhost/api/secrets", {
+      headers: {
+        "cf-connecting-ip": "1.2.3.4",
+        "x-forwarded-for": "9.9.9.9, 5.5.5.5",
+      },
+    });
+    expect(clientIp(req)).toBe("1.2.3.4");
+  });
+
+  it("ignores a spoofed outer proxy entry on Vercel", () => {
+    const req = new Request("http://localhost/api/secrets", {
+      headers: {
+        "x-vercel-forwarded-for": "1.2.3.4",
+        "x-forwarded-for": "9.9.9.9, 10.0.0.1",
+      },
+    });
+    expect(clientIp(req)).toBe("1.2.3.4");
+  });
 });
