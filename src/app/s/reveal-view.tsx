@@ -61,9 +61,9 @@ export function RevealView({ id }: { id: string }) {
 
   if (state.status === "done") {
     return (
-      <section aria-label="Hasil" className="flex w-full flex-col gap-6">
+      <section aria-label="Hasil" className="flex w-full min-w-0 flex-col gap-6 overflow-x-clip">
         <p className="text-[13px] font-bold text-[var(--tempel-signal)]">LINK HANGUS</p>
-        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
+        <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Rahasia terbuka. Link sudah hangus.
         </h1>
         <div className="flex w-full flex-col gap-4 bg-[var(--tempel-paper)] p-8">
@@ -80,9 +80,9 @@ export function RevealView({ id }: { id: string }) {
 
   if (state.status === "burned") {
     return (
-      <section aria-label="Hangus" className="flex w-full flex-col gap-6">
+      <section aria-label="Hangus" className="flex w-full min-w-0 flex-col gap-6 overflow-x-clip">
         <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK HANGUS</p>
-        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
+        <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Link sudah hangus.
         </h1>
         <p className="text-[17px] text-[var(--tempel-muted)]">
@@ -94,9 +94,9 @@ export function RevealView({ id }: { id: string }) {
 
   if (state.status === "expired") {
     return (
-      <section aria-label="Kedaluwarsa" className="flex w-full flex-col gap-6">
+      <section aria-label="Kedaluwarsa" className="flex w-full min-w-0 flex-col gap-6 overflow-x-clip">
         <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK KEDALUWARSA</p>
-        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
+        <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Link kedaluwarsa.
         </h1>
         <p className="text-[17px] text-[var(--tempel-muted)]">
@@ -108,9 +108,9 @@ export function RevealView({ id }: { id: string }) {
 
   if (state.status === "failed") {
     return (
-      <section aria-label="Gagal" className="flex w-full flex-col gap-6">
+      <section aria-label="Gagal" className="flex w-full min-w-0 flex-col gap-6 overflow-x-clip">
         <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK SEKALI BUKA</p>
-        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
+        <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Link tidak bisa dibuka.
         </h1>
         <p role="alert" className="text-[17px] text-[var(--tempel-muted)]">
@@ -120,7 +120,7 @@ export function RevealView({ id }: { id: string }) {
           <button
             type="button"
             onClick={onReveal}
-            className="w-fit bg-[var(--tempel-ink)] px-[18px] py-[18px] text-[15px] font-bold text-[var(--tempel-white)]"
+            className="w-fit bg-[var(--tempel-ink)] px-4 py-4 text-[15px] font-bold text-[var(--tempel-white)]"
           >
             Coba lagi
           </button>
@@ -130,9 +130,9 @@ export function RevealView({ id }: { id: string }) {
   }
 
   return (
-    <section aria-label="Reveal" className="flex w-full flex-col gap-6">
+    <section aria-label="Reveal" className="flex w-full min-w-0 flex-col gap-6 overflow-x-clip">
       <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK SEKALI BUKA</p>
-      <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
+      <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
         Seseorang mengirim rahasia untukmu.
       </h1>
       <p className="text-[17px] text-[var(--tempel-muted)]">
@@ -142,7 +142,7 @@ export function RevealView({ id }: { id: string }) {
         type="button"
         onClick={onReveal}
         disabled={state.status === "loading"}
-        className="w-fit bg-[var(--tempel-ink)] px-[18px] py-[18px] text-[15px] font-bold text-[var(--tempel-white)] disabled:opacity-50"
+        className="w-fit bg-[var(--tempel-ink)] px-4 py-4 text-[15px] font-bold text-[var(--tempel-white)] disabled:opacity-50"
       >
         {state.status === "loading" ? "Membuka…" : "Tampilkan dan hapus link"}
       </button>

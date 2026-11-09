@@ -7,11 +7,11 @@ export default function Home() {
         <img src="/icon.svg" width={32} height={32} alt="Tempel logo" />
         <div className="text-[22px] font-bold text-[var(--tempel-ink)]">Tempel</div>
       </nav>
-      <section className="flex flex-col gap-6 p-6 md:p-24">
+      <section className="flex min-w-0 flex-col gap-6 overflow-x-clip p-6 md:p-24">
         <p className="text-[13px] font-bold text-[var(--tempel-signal)]">
           ZERO-KNOWLEDGE SECRET SHARING
         </p>
-        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[60px]">
+        <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[60px]">
           Kirim rahasia. Link hangus sekali buka.
         </h1>
         <p className="text-[17px] text-[var(--tempel-muted)]">
@@ -20,8 +20,8 @@ export default function Home() {
         </p>
         <Composer />
       </section>
-      <section className="flex flex-col gap-4 bg-[var(--tempel-paper)] p-6 md:p-24">
-        <h2 className="text-3xl font-bold text-[var(--tempel-ink)] md:text-[40px]">
+      <section className="flex min-w-0 flex-col gap-4 overflow-x-clip bg-[var(--tempel-paper)] p-6 md:p-24">
+        <h2 className="text-[40px] font-bold text-[var(--tempel-ink)]">
           Server tidak bisa baca rahasia.
         </h2>
         <p className="text-[17px] text-[var(--tempel-muted)]">
