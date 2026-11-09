@@ -53,7 +53,7 @@ export default function Composer() {
           onChange={(event) => setSecret(event.target.value)}
           placeholder="Tempel password atau API key di sini"
           rows={4}
-          className="w-full bg-transparent font-mono text-sm text-[var(--tempel-ink)] placeholder:text-[var(--tempel-muted)] focus:outline-none"
+          className="w-full bg-transparent font-mono text-sm text-[var(--tempel-ink)] placeholder:text-[var(--tempel-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
         />
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="tempel-ttl" className="sr-only">

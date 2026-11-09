@@ -96,4 +96,20 @@ describe("<Composer />", () => {
 
     expect(await screen.findByText(/penyalinan gagal/i)).not.toBeNull();
   });
+
+  it("disables submit while the secret is empty", () => {
+    render(<Composer />);
+
+    expect(
+      screen.getByRole("button", { name: /buat link/i }),
+    ).toBeDisabled();
+  });
+
+  it("keeps a visible focus indicator on the secret input", async () => {
+    const { readFileSync } = await import("node:fs");
+    const composer = readFileSync("src/app/composer.tsx", "utf8");
+    const textarea = composer.match(/<textarea[\s\S]*?\/>/)?.[0] ?? "";
+    expect(textarea).not.toMatch(/focus:outline-none(?!\S)/);
+    expect(textarea).toMatch(/focus-visible:/);
+  });
 });
