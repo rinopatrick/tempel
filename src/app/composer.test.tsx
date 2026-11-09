@@ -52,7 +52,8 @@ describe("<Composer />", () => {
     );
   });
 
-  it("shows an error when creation fails and keeps no link", async () => {    const user = userEvent.setup();
+  it("shows an error when creation fails and keeps no link", async () => {
+    const user = userEvent.setup();
     createShareLinkMock.mockRejectedValue(new Error("server down"));
     render(<Composer />);
 
@@ -62,19 +63,63 @@ describe("<Composer />", () => {
     );
     await user.click(screen.getByRole("button", { name: /buat link/i }));
 
-    expect(await screen.findByText(/gagal/i)).not.toBeNull();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/gagal/i);
+    expect(screen.queryByText(/https:\/\/tempel\.test\/s\//)).toBeNull();
   });
 
-  it("uses the canvas body font and mono stacks", async () => {
-    const { readFileSync } = await import("node:fs");
-    const globalsCss = readFileSync("src/app/globals.css", "utf8");
-    expect(globalsCss).toMatch(/Inter/);
-    expect(globalsCss).toMatch(/IBM Plex Mono/);
-    const layoutTsx = readFileSync("src/app/layout.tsx", "utf8");
-    expect(layoutTsx).toMatch(/fonts\.googleapis/);
+  it("disables submit with progress text while busy", async () => {
+    const user = userEvent.setup();
+    let release!: (value: string) => void;
+    createShareLinkMock.mockReturnValue(
+      new Promise<string>((resolve) => {
+        release = resolve;
+      }),
+    );
+    render(<Composer />);
+
+    await user.type(
+      screen.getByPlaceholderText(/tempel password atau api key/i),
+      "db-prod-9f2k",
+    );
+    await user.click(screen.getByRole("button", { name: /buat link/i }));
+
+    const busyButton = await screen.findByRole("button", {
+      name: /membuat/i,
+    });
+    expect((busyButton as HTMLButtonElement).disabled).toBe(true);
+    release(`https://tempel.test/s/server-id-1#${"A".repeat(43)}`);
+    expect(
+      await screen.findByRole("button", { name: /buat link rahasia/i }),
+    ).not.toBeNull();
   });
 
-  it("shows an error when copying fails", async () => {
+  it("renders the done link in mono break-all with a copy button", async () => {
+    const user = userEvent.setup();
+    const key = "A".repeat(43);
+    const link = `https://tempel.test/s/server-id-1#${key}`;
+    createShareLinkMock.mockResolvedValue(link);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn(async () => {}) },
+    });
+    render(<Composer />);
+
+    await user.type(
+      screen.getByPlaceholderText(/tempel password atau api key/i),
+      "db-prod-9f2k",
+    );
+    await user.click(screen.getByRole("button", { name: /buat link/i }));
+
+    const done = await screen.findByText(link);
+    expect(done.className).toMatch(/break-all/);
+    expect(done.className).toMatch(/font-mono/);
+    expect(
+      screen.getByRole("button", { name: /salin link/i }),
+    ).not.toBeNull();
+  });
+
+  it("names manual copy when clipboard write fails", async () => {
     const user = userEvent.setup();
     const key = "A".repeat(43);
     createShareLinkMock.mockResolvedValue(
@@ -82,7 +127,11 @@ describe("<Composer />", () => {
     );
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
-      value: { writeText: vi.fn(async () => { throw new Error("denied"); }) },
+      value: {
+        writeText: vi.fn(async () => {
+          throw new Error("denied");
+        }),
+      },
     });
     render(<Composer />);
 
@@ -94,15 +143,26 @@ describe("<Composer />", () => {
     await screen.findByText(/https:\/\/tempel\.test\/s\/server-id-1#/);
     await user.click(screen.getByRole("button", { name: /salin/i }));
 
-    expect(await screen.findByText(/penyalinan gagal/i)).not.toBeNull();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/salin link secara manual/i);
+  });
+
+  it("uses the canvas body font and mono stacks", async () => {
+    const { readFileSync } = await import("node:fs");
+    const globalsCss = readFileSync("src/app/globals.css", "utf8");
+    expect(globalsCss).toMatch(/Inter/);
+    expect(globalsCss).toMatch(/IBM Plex Mono/);
+    const layoutTsx = readFileSync("src/app/layout.tsx", "utf8");
+    expect(layoutTsx).toMatch(/fonts\.googleapis/);
   });
 
   it("disables submit while the secret is empty", () => {
     render(<Composer />);
 
     expect(
-      screen.getByRole("button", { name: /buat link/i }),
-    ).toBeDisabled();
+      (screen.getByRole("button", { name: /buat link/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 
   it("keeps a visible focus indicator on the secret input", async () => {
