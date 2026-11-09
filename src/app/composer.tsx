@@ -42,7 +42,7 @@ export default function Composer() {
   }
 
   return (
-    <section aria-label="Composer" className="w-full bg-[#F4F4F2] p-8">
+    <section aria-label="Composer" className="w-full bg-[var(--tempel-paper)] p-8">
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <label htmlFor="tempel-secret" className="sr-only">
           Secret
@@ -53,7 +53,7 @@ export default function Composer() {
           onChange={(event) => setSecret(event.target.value)}
           placeholder="Tempel password atau API key di sini"
           rows={4}
-          className="w-full bg-transparent font-mono text-sm text-[#1A1A1A] placeholder:text-[#525252] focus:outline-none"
+          className="w-full bg-transparent font-mono text-sm text-[var(--tempel-ink)] placeholder:text-[var(--tempel-muted)] focus:outline-none"
         />
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="tempel-ttl" className="sr-only">
@@ -63,7 +63,7 @@ export default function Composer() {
             id="tempel-ttl"
             value={ttlSeconds}
             onChange={(event) => setTtlSeconds(Number(event.target.value))}
-            className="bg-white px-3 py-2 font-mono text-[13px] text-[#1A1A1A]"
+            className="bg-[var(--tempel-white)] px-3 py-2 font-mono text-[13px] text-[var(--tempel-ink)]"
           >
             {TTL_OPTIONS.map((option) => (
               <option key={option.seconds} value={option.seconds}>
@@ -74,28 +74,28 @@ export default function Composer() {
           <button
             type="submit"
             disabled={busy || secret.trim().length === 0}
-            className="bg-[#1A1A1A] px-4 py-3 text-[15px] font-bold text-white disabled:opacity-50"
+            className="bg-[var(--tempel-ink)] px-4 py-3 text-[15px] font-bold text-[var(--tempel-white)] disabled:opacity-50"
           >
             {busy ? "Membuat…" : "Buat link rahasia"}
           </button>
         </div>
-        <p className="font-mono text-[13px] text-[#525252]">
+        <p className="font-mono text-[13px] text-[var(--tempel-muted)]">
           burn-after-read | kedaluwarsa {TTL_OPTIONS.find((o) => o.seconds === ttlSeconds)?.label} |
           buka 1x
         </p>
       </form>
       {error !== null && (
-        <p role="alert" className="mt-4 text-[15px] text-[#B25E00]">
+        <p role="alert" className="mt-4 text-[15px] text-[var(--tempel-warn)]">
           Gagal membuat link: {error}
         </p>
       )}
       {link !== null && (
         <div className="mt-4 flex flex-col gap-3">
-          <p className="break-all font-mono text-sm text-[#1A1A1A]">{link}</p>
+          <p className="break-all font-mono text-sm text-[var(--tempel-ink)]">{link}</p>
           <button
             type="button"
             onClick={onCopy}
-            className="w-fit bg-[#1A1A1A] px-4 py-2 text-sm font-bold text-white"
+            className="w-fit bg-[var(--tempel-ink)] px-4 py-2 text-sm font-bold text-[var(--tempel-white)]"
           >
             {copied ? "Tersalin" : "Salin link"}
           </button>

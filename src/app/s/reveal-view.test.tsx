@@ -44,8 +44,8 @@ describe("<RevealView />", () => {
     ).not.toBeNull();
     expect(revealMock).not.toHaveBeenCalled();
     const eyebrow = screen.getByText(/link sekali buka/i);
-    expect(eyebrow.className).toMatch(/#B25E00/i);
-    expect(container.querySelector("h1")?.className).toMatch(/#1A1A1A/);
+    expect(eyebrow.className).toMatch(/--tempel-warn/);
+    expect(container.querySelector("h1")?.className).toMatch(/--tempel-ink/);
   });
 
   it("fetches exactly once on click and shows the secret plus the burned notice", async () => {
@@ -64,7 +64,7 @@ describe("<RevealView />", () => {
     expect(await screen.findByText(/salin sekarang/i)).not.toBeNull();
     expect(await screen.findByText(/didekripsi lokal/i)).not.toBeNull();
     const doneEyebrow = await screen.findByText(/^link hangus$/i);
-    expect(doneEyebrow.className).toMatch(/#0E7A4F/i);
+    expect(doneEyebrow.className).toMatch(/--tempel-signal/);
     expect(revealMock).toHaveBeenCalledTimes(1);
     expect(revealMock).toHaveBeenCalledWith({
       id: "abc_123",
@@ -116,7 +116,7 @@ describe("<RevealView />", () => {
     ).not.toBeNull();
     expect(screen.getByText(/pernah dibuka/i)).not.toBeNull();
     const burnedEyebrow = screen.getByText(/^link hangus$/i);
-    expect(burnedEyebrow.className).toMatch(/#B25E00/i);
+    expect(burnedEyebrow.className).toMatch(/--tempel-warn/);
     expect(
       screen.queryByRole("button", { name: /tampilkan dan hapus link/i }),
     ).toBeNull();
@@ -136,7 +136,7 @@ describe("<RevealView />", () => {
     ).not.toBeNull();
     expect(screen.getByText(/batas waktu/i)).not.toBeNull();
     const expiredEyebrow = screen.getByText(/^link kedaluwarsa$/i);
-    expect(expiredEyebrow.className).toMatch(/#B25E00/i);
+    expect(expiredEyebrow.className).toMatch(/--tempel-warn/);
     expect(
       screen.queryByRole("button", { name: /tampilkan dan hapus link/i }),
     ).toBeNull();
