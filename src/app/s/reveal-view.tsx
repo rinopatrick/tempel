@@ -62,15 +62,15 @@ export function RevealView({ id }: { id: string }) {
   if (state.status === "done") {
     return (
       <section aria-label="Hasil" className="flex w-full flex-col gap-6">
-        <p className="text-[13px] font-bold text-[#0E7A4F]">LINK HANGUS</p>
-        <h1 className="text-4xl font-bold text-[#1A1A1A] md:text-[56px]">
+        <p className="text-[13px] font-bold text-[var(--tempel-signal)]">LINK HANGUS</p>
+        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Rahasia terbuka. Link sudah hangus.
         </h1>
-        <div className="flex w-full flex-col gap-4 bg-[#F4F4F2] p-8">
-          <p className="break-all font-mono text-base text-[#1A1A1A]">
+        <div className="flex w-full flex-col gap-4 bg-[var(--tempel-paper)] p-8">
+          <p className="break-all font-mono text-base text-[var(--tempel-ink)]">
             {state.secret}
           </p>
-          <p className="text-sm text-[#525252]">
+          <p className="text-sm text-[var(--tempel-muted)]">
             Didekripsi lokal. Salin sekarang.
           </p>
         </div>
@@ -81,11 +81,11 @@ export function RevealView({ id }: { id: string }) {
   if (state.status === "burned") {
     return (
       <section aria-label="Hangus" className="flex w-full flex-col gap-6">
-        <p className="text-[13px] font-bold text-[#B25E00]">LINK HANGUS</p>
-        <h1 className="text-4xl font-bold text-[#1A1A1A] md:text-[56px]">
+        <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK HANGUS</p>
+        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Link sudah hangus.
         </h1>
-        <p className="text-[17px] text-[#525252]">
+        <p className="text-[17px] text-[var(--tempel-muted)]">
           Link ini pernah dibuka. Rahasia dihapus saat itu juga.
         </p>
       </section>
@@ -95,11 +95,11 @@ export function RevealView({ id }: { id: string }) {
   if (state.status === "expired") {
     return (
       <section aria-label="Kedaluwarsa" className="flex w-full flex-col gap-6">
-        <p className="text-[13px] font-bold text-[#B25E00]">LINK KEDALUWARSA</p>
-        <h1 className="text-4xl font-bold text-[#1A1A1A] md:text-[56px]">
+        <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK KEDALUWARSA</p>
+        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Link kedaluwarsa.
         </h1>
-        <p className="text-[17px] text-[#525252]">
+        <p className="text-[17px] text-[var(--tempel-muted)]">
           Link ini lewat batas waktu. Minta pengirim buat link baru.
         </p>
       </section>
@@ -109,18 +109,18 @@ export function RevealView({ id }: { id: string }) {
   if (state.status === "failed") {
     return (
       <section aria-label="Gagal" className="flex w-full flex-col gap-6">
-        <p className="text-[13px] font-bold text-[#B25E00]">LINK SEKALI BUKA</p>
-        <h1 className="text-4xl font-bold text-[#1A1A1A] md:text-[56px]">
+        <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK SEKALI BUKA</p>
+        <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Link tidak bisa dibuka.
         </h1>
-        <p role="alert" className="text-[17px] text-[#525252]">
+        <p role="alert" className="text-[17px] text-[var(--tempel-muted)]">
           {state.message}
         </p>
         {state.retry === true ? (
           <button
             type="button"
             onClick={onReveal}
-            className="w-fit bg-[#1A1A1A] px-[18px] py-[18px] text-[15px] font-bold text-white"
+            className="w-fit bg-[var(--tempel-ink)] px-[18px] py-[18px] text-[15px] font-bold text-[var(--tempel-white)]"
           >
             Coba lagi
           </button>
@@ -131,18 +131,18 @@ export function RevealView({ id }: { id: string }) {
 
   return (
     <section aria-label="Reveal" className="flex w-full flex-col gap-6">
-      <p className="text-[13px] font-bold text-[#B25E00]">LINK SEKALI BUKA</p>
-      <h1 className="text-4xl font-bold text-[#1A1A1A] md:text-[56px]">
+      <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK SEKALI BUKA</p>
+      <h1 className="text-4xl font-bold text-[var(--tempel-ink)] md:text-[56px]">
         Seseorang mengirim rahasia untukmu.
       </h1>
-      <p className="text-[17px] text-[#525252]">
+      <p className="text-[17px] text-[var(--tempel-muted)]">
         Klik tombol untuk tampilkan. Server hapus link saat itu juga.
       </p>
       <button
         type="button"
         onClick={onReveal}
         disabled={state.status === "loading"}
-        className="w-fit bg-[#1A1A1A] px-[18px] py-[18px] text-[15px] font-bold text-white disabled:opacity-50"
+        className="w-fit bg-[var(--tempel-ink)] px-[18px] py-[18px] text-[15px] font-bold text-[var(--tempel-white)] disabled:opacity-50"
       >
         {state.status === "loading" ? "Membuka…" : "Tampilkan dan hapus link"}
       </button>

@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
+/* Token contract projection. Values owned by src/app/tokens.ts.
+   No new font or color without a canvas diff. */
 :root {
+  --tempel-ink: #1a1a1a;
+  --tempel-muted: #525252;
+  --tempel-paper: #f4f4f2;
+  --tempel-white: #ffffff;
+  --tempel-signal: #0e7a4f;
+  --tempel-warn: #b25e00;
   --tempel-sans: "Inter", system-ui, sans-serif;
   --tempel-mono: "IBM Plex Mono", system-ui, sans-serif;
 }
