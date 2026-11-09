@@ -66,6 +66,9 @@ export function RevealView({ id }: { id: string }) {
         <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Rahasia terbuka. Link sudah hangus.
         </h1>
+        <p role="alert" className="sr-only">
+          Status: rahasia ditampilkan sekali, link hangus.
+        </p>
         <div className="flex w-full flex-col gap-4 bg-[var(--tempel-paper)] p-8">
           <p className="break-all font-mono text-base text-[var(--tempel-ink)]">
             {state.secret}
@@ -85,6 +88,9 @@ export function RevealView({ id }: { id: string }) {
         <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Link sudah hangus.
         </h1>
+        <p role="alert" className="sr-only">
+          Status: link hangus, rahasia sudah dihapus.
+        </p>
         <p className="text-[17px] text-[var(--tempel-muted)]">
           Link ini pernah dibuka. Rahasia dihapus saat itu juga.
         </p>
@@ -99,6 +105,9 @@ export function RevealView({ id }: { id: string }) {
         <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
           Link kedaluwarsa.
         </h1>
+        <p role="alert" className="sr-only">
+          Status: link kedaluwarsa, minta link baru.
+        </p>
         <p className="text-[17px] text-[var(--tempel-muted)]">
           Link ini lewat batas waktu. Minta pengirim buat link baru.
         </p>
@@ -120,7 +129,7 @@ export function RevealView({ id }: { id: string }) {
           <button
             type="button"
             onClick={onReveal}
-            className="w-fit bg-[var(--tempel-ink)] px-4 py-4 text-[15px] font-bold text-[var(--tempel-white)]"
+            className="w-fit bg-[var(--tempel-ink)] px-4 py-4 text-[15px] font-bold text-[var(--tempel-white)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
           >
             Coba lagi
           </button>
@@ -142,7 +151,7 @@ export function RevealView({ id }: { id: string }) {
         type="button"
         onClick={onReveal}
         disabled={state.status === "loading"}
-        className="w-fit bg-[var(--tempel-ink)] px-4 py-4 text-[15px] font-bold text-[var(--tempel-white)] disabled:opacity-50"
+        className="w-fit bg-[var(--tempel-ink)] px-4 py-4 text-[15px] font-bold text-[var(--tempel-white)] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
       >
         {state.status === "loading" ? "Membuka…" : "Tampilkan dan hapus link"}
       </button>

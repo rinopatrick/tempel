@@ -63,7 +63,7 @@ export default function Composer() {
             id="tempel-ttl"
             value={ttlSeconds}
             onChange={(event) => setTtlSeconds(Number(event.target.value))}
-            className="bg-[var(--tempel-white)] px-3 py-2 font-mono text-[13px] text-[var(--tempel-ink)]"
+            className="bg-[var(--tempel-white)] px-3 py-2 font-mono text-[13px] text-[var(--tempel-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
           >
             {TTL_OPTIONS.map((option) => (
               <option key={option.seconds} value={option.seconds}>
@@ -74,7 +74,7 @@ export default function Composer() {
           <button
             type="submit"
             disabled={busy || secret.trim().length === 0}
-            className="bg-[var(--tempel-ink)] px-4 py-3 text-[15px] font-bold text-[var(--tempel-white)] disabled:opacity-50"
+            className="bg-[var(--tempel-ink)] px-4 py-3 text-[15px] font-bold text-[var(--tempel-white)] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
           >
             {busy ? "Membuat…" : "Buat link rahasia"}
           </button>
@@ -85,7 +85,7 @@ export default function Composer() {
         </p>
       </form>
       {error !== null && (
-        <p role="alert" className="mt-4 text-[15px] text-[var(--tempel-warn)]">
+        <p role="alert" className="mt-4 text-[15px] text-[var(--tempel-ink)]">
           Gagal membuat link: {error}
         </p>
       )}
@@ -95,7 +95,7 @@ export default function Composer() {
           <button
             type="button"
             onClick={onCopy}
-            className="w-fit bg-[var(--tempel-ink)] px-4 py-2 text-sm font-bold text-[var(--tempel-white)]"
+            className="w-fit bg-[var(--tempel-ink)] px-4 py-2 text-sm font-bold text-[var(--tempel-white)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
           >
             {copied ? "Tersalin" : "Salin link"}
           </button>

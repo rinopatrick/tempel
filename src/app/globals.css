@@ -16,3 +16,10 @@
 body {
   font-family: var(--tempel-sans);
 }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none;
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
