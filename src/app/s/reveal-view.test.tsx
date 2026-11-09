@@ -72,6 +72,24 @@ describe("<RevealView />", () => {
     });
   });
 
+  it("shows loading with canvas tokens while the reveal is in flight", async () => {
+    const user = userEvent.setup();
+    revealMock.mockImplementation(() => new Promise<string>(() => {}));
+    const { container } = render(<RevealView id="abc_123" />);
+
+    await user.click(
+      screen.getByRole("button", { name: /tampilkan dan hapus link/i }),
+    );
+
+    const loadingButton = await screen.findByRole("button", {
+      name: /membuka/i,
+    });
+    expect(loadingButton.hasAttribute("disabled")).toBe(true);
+    expect(loadingButton.className).toMatch(/--tempel-ink/);
+    expect(container.querySelector("h1")?.className).toMatch(/--tempel-ink/);
+    expect(revealMock).toHaveBeenCalledTimes(1);
+  });
+
   it("does not refetch when the reveal button is pressed twice", async () => {
     const user = userEvent.setup();
     revealMock.mockImplementation(
