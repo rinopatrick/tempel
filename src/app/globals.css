@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Mono wiring (grill #10, issue #61): font-mono consumes the canvas token
+   instead of Tailwind's default mono stack. Wiring only — no token change. */
+@theme {
+  --font-mono: var(--tempel-mono);
+}
+
 /* Token contract projection. Values owned by src/app/tokens.ts.
    No new font or color without a canvas diff. */
 :root {

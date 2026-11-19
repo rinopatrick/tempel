@@ -72,6 +72,18 @@ describe("<RevealView />", () => {
     });
   });
 
+  it("renders the revealed secret panel in mono break-all", async () => {
+    const user = userEvent.setup();
+    revealMock.mockResolvedValue("db-prod-9f2k");
+    render(<RevealView id="abc_123" />);
+    await user.click(
+      screen.getByRole("button", { name: /tampilkan dan hapus link/i }),
+    );
+    const secret = await screen.findByText("db-prod-9f2k");
+    expect(secret.className).toMatch(/font-mono/);
+    expect(secret.className).toMatch(/break-all/);
+  });
+
   it("shows loading with canvas tokens while the reveal is in flight", async () => {
     const user = userEvent.setup();
     revealMock.mockImplementation(() => new Promise<string>(() => {}));
