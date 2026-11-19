@@ -53,7 +53,7 @@ export default function Composer() {
           onChange={(event) => setSecret(event.target.value)}
           placeholder="Tempel password atau API key di sini"
           rows={4}
-          className="w-full bg-transparent font-mono text-sm text-[var(--tempel-ink)] placeholder:text-[var(--tempel-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
+          className="w-full bg-transparent font-mono text-[13px] text-[var(--tempel-ink)] placeholder:text-[var(--tempel-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
         />
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="tempel-ttl" className="sr-only">
@@ -91,11 +91,11 @@ export default function Composer() {
       )}
       {link !== null && (
         <div className="mt-4 flex flex-col gap-3">
-          <p className="break-all font-mono text-sm text-[var(--tempel-ink)]">{link}</p>
+          <p className="break-all font-mono text-[13px] text-[var(--tempel-ink)]">{link}</p>
           <button
             type="button"
             onClick={onCopy}
-            className="w-fit bg-[var(--tempel-ink)] px-4 py-2 text-sm font-bold text-[var(--tempel-white)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
+            className="w-fit bg-[var(--tempel-ink)] px-4 py-2 text-[13px] font-bold text-[var(--tempel-white)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tempel-signal)]"
           >
             {copied ? "Tersalin" : "Salin link"}
           </button>
