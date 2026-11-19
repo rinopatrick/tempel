@@ -14,6 +14,9 @@ tsconfig.tsbuildinfo
 # ---> Tempel secrets store (SQLite file)
 data/
 
+# ---> Gate capture artifacts (spec #42: screenshots live in the PR only)
+.gate-*
+
 # ---> Private: agent config, approved canvas, scraped assets
 CLAUDE.md
 design

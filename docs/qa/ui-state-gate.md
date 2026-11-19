@@ -30,6 +30,17 @@ Reveal, from `src/app/s/reveal-view.tsx`:
 Each state renders in the canvas tokens from `src/app/tokens.ts`. A new
 color, font, or size needs a canvas diff first.
 
+## Capture path
+
+The ten states come from the running app, driven in a real browser:
+
+1. Start the app with `npm run dev`.
+2. Open it in a real browser and drive the composer and reveal flows
+   into each state named above.
+3. Capture one screenshot per state — ten in total.
+4. Attach them to the PR only. No capture file, image, or harness is
+   committed to the repo.
+
 ## Sign-off
 
 Copy this checklist into the PR body and tick it there. The repo file stays
