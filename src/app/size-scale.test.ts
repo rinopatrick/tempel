@@ -10,10 +10,16 @@ import { tokens } from "./tokens";
  * - responsive 40/56/60 lock stays with responsive-scale.test.ts
  */
 
-const SURFACES = readdirSync("src/app", { recursive: true })
-  .map((p) => `src/app/${String(p).replaceAll("\\", "/")}`)
-  .filter((p) => p.endsWith(".tsx") && !p.endsWith(".test.tsx"))
+const SURFACES = readdirSync("src", { recursive: true })
+  .map((p) => `src/${String(p).replaceAll("\\", "/")}`)
+  .filter(
+    (p) => /\.(tsx|jsx|ts)$/.test(p) && !/\.test\.(tsx|jsx|ts)$/.test(p),
+  )
   .map((p) => [p, readFileSync(p, "utf8")] as const);
+
+const COLOR_VARS = new Set(
+  Object.keys(tokens.palette).map((name) => `var(--tempel-${name})`),
+);
 
 const NAMED_SIZE = /\btext-(?:xs|sm|base|lg|xl|[2-9]xl)\b/;
 const ARBITRARY_TEXT = /\btext-\[([^\]]+)\]/g;
@@ -46,7 +52,7 @@ describe("size scale lock (#62)", () => {
     const allowed = new Set(tokens.size.map((n) => `${n}px`));
     for (const [path, src] of SURFACES) {
       for (const [, value] of src.matchAll(ARBITRARY_TEXT)) {
-        if (value.startsWith("var(")) continue; // color token, not a size
+        if (COLOR_VARS.has(value)) continue; // palette color token, not a size
         expect(
           allowed.has(value),
           `${path} uses off-scale text-[${value}], scale is ${tokens.size.join("/")}`,
