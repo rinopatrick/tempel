@@ -12,9 +12,9 @@ Composer, from `src/app/composer.tsx`:
 | State | What the reviewer must see |
 |---|---|
 | idle | Mono placeholder in muted ink, expiry select on `1 jam`, submit disabled while the secret is empty |
-| busy | Submit disabled with `Membuat…`, previous alert and link cleared |
+| busy | Submit disabled with `Membuat…`, previous alert cleared; an earlier link stays until the new result lands |
 | error | `role="alert"` reading `Gagal membuat link: …`, no link kept |
-| link | Share link in mono `break-all`, `Salin link` beside it, hint line unchanged |
+| link | Share link in mono `break-all`, `Salin link` below it, hint line unchanged |
 
 Reveal, from `src/app/s/reveal-view.tsx`:
 
@@ -31,6 +31,9 @@ Each state renders in the canvas tokens from `src/app/tokens.ts`. A new
 color, font, or size needs a canvas diff first.
 
 ## Sign-off
+
+Copy this checklist into the PR body and tick it there. The repo file stays
+unticked; the signed copy lives with the PR it gates.
 
 - [ ] Ten screenshots attached to the PR, one per state named above
 - [ ] `npm test -- --run` green
