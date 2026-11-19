@@ -29,6 +29,16 @@ describe("token contract", () => {
     expect(layout).toMatch(/IBM[+ ]Plex[+ ]Mono/);
   });
 
+  it("wires the mono utility to the token stack through the theme layer", () => {
+    const css = readFileSync("src/app/globals.css", "utf8");
+    const theme = css.match(/@theme[^{]*\{[^}]*\}/)?.[0] ?? "";
+    expect(theme, "globals.css must declare an @theme block").not.toBe("");
+    expect(theme).toMatch(/--font-mono:\s*var\(--tempel-mono\)/);
+    expect(css.toLowerCase()).toContain(
+      `--tempel-mono: ${tokens.type.mono.toLowerCase()}`,
+    );
+  });
+
   it("projects the palette as CSS vars with zero hardcoded hex in components", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
     for (const [name, hex] of Object.entries(tokens.palette)) {

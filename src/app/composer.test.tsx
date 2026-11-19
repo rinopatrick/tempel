@@ -156,6 +156,12 @@ describe("<Composer />", () => {
     expect(layoutTsx).toMatch(/fonts\.googleapis/);
   });
 
+  it("renders the secret input in the mono class", () => {
+    render(<Composer />);
+    const input = screen.getByLabelText(/^secret$/i);
+    expect(input.className).toMatch(/font-mono/);
+  });
+
   it("disables submit while the secret is empty", () => {
     render(<Composer />);
 
