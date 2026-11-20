@@ -70,10 +70,10 @@ export function RevealView({ id }: { id: string }) {
           Status: rahasia ditampilkan sekali, link hangus.
         </p>
         <div className="flex w-full flex-col gap-4 bg-[var(--tempel-paper)] p-8">
-          <p className="break-all font-mono text-base text-[var(--tempel-ink)]">
+          <p className="break-all font-mono text-[15px] text-[var(--tempel-ink)]">
             {state.secret}
           </p>
-          <p className="text-sm text-[var(--tempel-muted)]">
+          <p className="text-[13px] text-[var(--tempel-muted)]">
             Didekripsi lokal. Salin sekarang.
           </p>
         </div>

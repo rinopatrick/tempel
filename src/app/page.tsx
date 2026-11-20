@@ -5,7 +5,7 @@ export default function Home() {
     <main className="bg-[var(--tempel-white)]">
       <nav className="flex items-center gap-3 p-5">
         <img src="/icon.svg" width={32} height={32} alt="Tempel logo" />
-        <div className="text-[22px] font-bold text-[var(--tempel-ink)]">Tempel</div>
+        <div className="text-[17px] font-bold text-[var(--tempel-ink)]">Tempel</div>
       </nav>
       <section className="flex min-w-0 flex-col gap-6 overflow-x-clip p-6 md:p-24">
         <p className="text-[13px] font-bold text-[var(--tempel-signal)]">
