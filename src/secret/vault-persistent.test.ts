@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -52,6 +52,30 @@ describe("createFileVault (cleanup on store)", () => {
     clock.mockReturnValue(start + sevenDaysMs);
     vault.store("after-window", envelope);
     expect(vault.goneReason("original")).toBe("unknown");
+  });
+
+  it("removes expired ciphertext from the SQLite file after cleanup and checkpoint", () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start);
+    const path = tmpDb();
+    const vault = createFileVault(path);
+    const sentinel = "tempel-expiration-ciphertext-sentinel";
+    vault.store("original", { ...envelope, ciphertext: sentinel.repeat(10) }, start + 1);
+    vault.store("live", envelope);
+
+    const db = new DatabaseSync(path);
+    try {
+      const checkpoint = db.prepare("PRAGMA wal_checkpoint(TRUNCATE)");
+      expect(checkpoint.get()?.busy).toBe(0);
+      expect(readFileSync(path).includes(sentinel)).toBe(true);
+
+      clock.mockReturnValue(start + 1);
+      vault.store("next", envelope);
+      expect(vault.goneReason("original")).toBe("expired");
+      expect(checkpoint.get()?.busy).toBe(0);
+      expect(readFileSync(path).includes(sentinel)).toBe(false);
+    } finally {
+      db.close();
+    }
   });
 
   it("opens the legacy schema and retains old burns based on their expiry", () => {

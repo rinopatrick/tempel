@@ -82,6 +82,7 @@ export function createFileVault(dbPath: string): SecretVault {
   // then observe the burned row instead of throwing SQLITE_BUSY.
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA busy_timeout = 5000");
+  db.exec("PRAGMA secure_delete = ON");
   db.exec(
     `CREATE TABLE IF NOT EXISTS secrets (
       id TEXT PRIMARY KEY,
