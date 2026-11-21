@@ -24,8 +24,7 @@ function prune(now: number, bucket: Bucket): void {
 function evictIdle(now: number): void {
   const cutoff = now - RATE_LIMIT_WINDOW_MS;
   for (const [key, bucket] of buckets) {
-    const newest = bucket.hits[bucket.hits.length - 1];
-    if (newest !== undefined && newest > cutoff) break;
+    if (Math.max(...bucket.hits) > cutoff) break;
     buckets.delete(key);
   }
 }
