@@ -153,7 +153,8 @@ describe("<Composer />", () => {
     expect(globalsCss).toMatch(/Inter/);
     expect(globalsCss).toMatch(/IBM Plex Mono/);
     const layoutTsx = readFileSync("src/app/layout.tsx", "utf8");
-    expect(layoutTsx).toMatch(/fonts\.googleapis/);
+    expect(layoutTsx).toMatch(/next\/font\/google/);
+    expect(layoutTsx).not.toMatch(/fonts\.googleapis/);
   });
 
   it("renders the secret input in the mono class", () => {

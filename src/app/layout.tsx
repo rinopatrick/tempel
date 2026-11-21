@@ -1,5 +1,21 @@
 import type { Metadata } from "next";
+import { IBM_Plex_Mono, Inter } from "next/font/google";
 import "./globals.css";
+
+// Self-hosted at build (#70) so the CSP keeps font-src 'self'. The variables
+// override the :root token stacks from <body> down, keeping their fallbacks.
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--tempel-sans",
+  fallback: ["system-ui", "sans-serif"],
+});
+
+const mono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--tempel-mono",
+  fallback: ["system-ui", "sans-serif"],
+});
 
 export const metadata: Metadata = {
   title: "Tempel — Kirim rahasia. Link hangus sekali buka.",
@@ -17,19 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Inter:wght@100..900&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>{children}</body>
+      <body className={`${sans.variable} ${mono.variable}`}>{children}</body>
     </html>
   );
 }

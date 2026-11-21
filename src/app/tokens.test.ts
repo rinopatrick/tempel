@@ -23,10 +23,24 @@ describe("token contract", () => {
     expect(tokens.size).toEqual([13, 15, 17, 40, 56, 60]);
   });
 
-  it("pins layout font links to the contract stacks", () => {
+  it("self-hosts the contract fonts through next/font (#70)", () => {
     const layout = readFileSync("src/app/layout.tsx", "utf8");
-    expect(layout).toMatch(/Inter/);
-    expect(layout).toMatch(/IBM[+ ]Plex[+ ]Mono/);
+    expect(layout).toMatch(
+      /import\s*\{[^}]*\bInter\b[^}]*\}\s*from\s*["']next\/font\/google["']/,
+    );
+    expect(layout).toMatch(
+      /import\s*\{[^}]*\bIBM_Plex_Mono\b[^}]*\}\s*from\s*["']next\/font\/google["']/,
+    );
+    expect(layout).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
+  });
+
+  it("points the token CSS vars at the self-hosted fonts (#70)", () => {
+    const layout = readFileSync("src/app/layout.tsx", "utf8");
+    expect(layout).toMatch(/variable:\s*["']--tempel-sans["']/);
+    expect(layout).toMatch(/variable:\s*["']--tempel-mono["']/);
+    // font-mono must resolve --tempel-mono where it is used, not at :root.
+    const css = readFileSync("src/app/globals.css", "utf8");
+    expect(css).toMatch(/@theme\s+inline\s*\{/);
   });
 
   it("wires the mono utility to the token stack through the theme layer", () => {
