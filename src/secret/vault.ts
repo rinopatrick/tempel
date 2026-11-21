@@ -214,24 +214,49 @@ function resolveDbPath(): string {
   return process.env.TEMPEL_DB_PATH ?? join(process.cwd(), "data", "secrets.db");
 }
 
-let sharedVault: SecretVault | null = null;
+export class VaultUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super("File Vault unavailable", { cause });
+  }
+}
 
-// File store by default, memory fallback for dev (TEMPEL_STORE=memory or
-// file init failure). Contract unchanged either way.
-export function getSharedVault(): SecretVault {
+interface ActiveVault {
+  store: "file" | "memory";
+  vault: SecretVault;
+}
+
+let sharedVault: ActiveVault | VaultUnavailableError | null = null;
+
+// File Vault by default; memory only by explicit override or after an
+// initialization failure outside production.
+function resolveSharedVault(): ActiveVault {
   if (sharedVault === null) {
     if (process.env.TEMPEL_STORE === "memory") {
-      sharedVault = createSecretVault();
+      sharedVault = { store: "memory", vault: createSecretVault() };
     } else {
       try {
-        sharedVault = createFileVault(resolveDbPath());
+        sharedVault = { store: "file", vault: createFileVault(resolveDbPath()) };
       } catch (error) {
-        console.error("[tempel] file store unavailable, memory fallback", error);
-        sharedVault = createSecretVault();
+        if (process.env.NODE_ENV === "production") {
+          console.error("[tempel] file store unavailable", error);
+          sharedVault = new VaultUnavailableError(error);
+        } else {
+          console.error("[tempel] file store unavailable, memory fallback", error);
+          sharedVault = { store: "memory", vault: createSecretVault() };
+        }
       }
     }
   }
+  if (sharedVault instanceof VaultUnavailableError) throw sharedVault;
   return sharedVault;
+}
+
+export function getSharedVault(): SecretVault {
+  return resolveSharedVault().vault;
+}
+
+export function getSharedVaultStore(): ActiveVault["store"] {
+  return resolveSharedVault().store;
 }
 
 // Test seam: drop the cached shared vault between cases.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, clientIp } from "@/secret/rate-limit";
-import { getSharedVault } from "@/secret/vault";
+import { getSharedVault, VaultUnavailableError } from "@/secret/vault";
 
 function invalidId(id: unknown): boolean {
   return typeof id !== "string" || !/^[A-Za-z0-9_-]{22}$/.test(id);
@@ -24,14 +24,19 @@ export async function GET(
   if (invalidId(id)) {
     return NextResponse.json({ error: "unknown" }, { status: 404 });
   }
-  const vault = getSharedVault();
-  const envelope = vault.reveal(id);
-  if (envelope === null) {
-    const reason = vault.goneReason(id);
-    if (reason === "unknown") {
-      return NextResponse.json({ error: "unknown" }, { status: 404 });
+  try {
+    const vault = getSharedVault();
+    const envelope = vault.reveal(id);
+    if (envelope === null) {
+      const reason = vault.goneReason(id);
+      if (reason === "unknown") {
+        return NextResponse.json({ error: "unknown" }, { status: 404 });
+      }
+      return NextResponse.json({ error: "gone", reason }, { status: 410 });
     }
-    return NextResponse.json({ error: "gone", reason }, { status: 410 });
+    return NextResponse.json(envelope);
+  } catch (error) {
+    if (!(error instanceof VaultUnavailableError)) throw error;
+    return NextResponse.json({ error: "store-unavailable" }, { status: 503 });
   }
-  return NextResponse.json(envelope);
 }
