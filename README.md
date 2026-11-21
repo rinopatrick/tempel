@@ -42,7 +42,7 @@ npm test -- --run
 
 ## Ship it
 
-The supported target is one Node host running `next start` behind a trusted proxy that overwrites `X-Forwarded-For`. The proxy owns TLS. SQLite lives in a file on persistent disk. The database never ships with the build, because `data/` is gitignored.
+The supported target is one Node host running `next start` behind a trusted TLS proxy. It replaces `X-Forwarded-For` and strips the other client-IP headers as specified in [ADR-0001](docs/adr/0001-deploy-target-and-release.md). SQLite lives in a file on persistent disk. The database never ships with the build, because `data/` is gitignored.
 
 ```sh
 npm ci
@@ -50,8 +50,9 @@ npx tsc --noEmit
 npm test -- --run
 npm run build
 TEMPEL_DB_PATH=/var/lib/tempel/secrets.db PORT=3111 node_modules/.bin/next start
-node scripts/live-probe.mjs http://localhost:3111
 ```
+
+Run the [launch probe](docs/security-acceptance.md#launch-gate) against an isolated instance, not the production database.
 
 `GET /api/health` answers `200 { "status": "ok" }`.
 
