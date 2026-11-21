@@ -33,6 +33,8 @@ Open `http://localhost:3000` and create a secret. Open the link it returns in a 
 
 ## Checks
 
+See the [v1 threat model and security launch gate](docs/security-acceptance.md).
+
 ```sh
 npx tsc --noEmit
 npm test -- --run
