@@ -16,7 +16,7 @@
   --tempel-signal: #0e7a4f;
   --tempel-warn: #b25e00;
   --tempel-sans: "Inter", system-ui, sans-serif;
-  --tempel-mono: "IBM Plex Mono", system-ui, sans-serif;
+  --tempel-mono: "IBM Plex Mono", monospace;
 }
 
 body {

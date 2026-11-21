@@ -1,4 +1,4 @@
-// Single token contract extracted from the approved canvas (design/tempel.pen).
+// Single token contract extracted from the approved canvas (docs/design/canvas-tokens.md).
 // Palette plus type plus size live here. Globals plus layout consume it.
 // No new font or color without a canvas diff.
 
@@ -13,7 +13,7 @@ export const tokens = {
   },
   type: {
     sans: '"Inter", system-ui, sans-serif',
-    mono: '"IBM Plex Mono", system-ui, sans-serif',
+    mono: '"IBM Plex Mono", monospace',
   },
   size: [13, 15, 17, 40, 56, 60],
 } as const;

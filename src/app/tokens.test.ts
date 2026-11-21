@@ -16,7 +16,7 @@ describe("token contract", () => {
 
   it("owns the canvas type stacks in one module", () => {
     expect(tokens.type.sans).toMatch(/Inter/);
-    expect(tokens.type.mono).toMatch(/IBM Plex Mono/);
+    expect(tokens.type.mono).toBe('"IBM Plex Mono", monospace');
   });
 
   it("owns the canvas size scale in one module", () => {
@@ -41,6 +41,13 @@ describe("token contract", () => {
     // font-mono must resolve --tempel-mono where it is used, not at :root.
     const css = readFileSync("src/app/globals.css", "utf8");
     expect(css).toMatch(/@theme\s+inline\s*\{/);
+  });
+
+  it("keeps the self-hosted mono font's fallback monospace (#65)", () => {
+    const layout = readFileSync("src/app/layout.tsx", "utf8");
+    const monoOptions = layout.match(/IBM_Plex_Mono\(\{([\s\S]*?)\}\)/)?.[1];
+    expect(monoOptions).toMatch(/adjustFontFallback:\s*false/);
+    expect(monoOptions).toMatch(/fallback:\s*\[\s*["']monospace["']\s*,?\s*\]/);
   });
 
   it("wires the mono utility to the token stack through the theme layer", () => {

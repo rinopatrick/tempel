@@ -14,7 +14,8 @@ const mono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: "400",
   variable: "--tempel-mono",
-  fallback: ["system-ui", "sans-serif"],
+  adjustFontFallback: false,
+  fallback: ["monospace"],
 });
 
 export const metadata: Metadata = {
