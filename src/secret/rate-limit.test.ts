@@ -89,6 +89,24 @@ describe("rate limit", () => {
     expect(bucketCount()).toBe(2);
   });
 
+  it("does not shorten the window when the clock steps back", () => {
+    const t0 = 6_000_000;
+    const behind = t0 - 30_000;
+    checkRateLimit("1.0.0.3", "get-secret", t0);
+    for (let i = 0; i < RATE_LIMIT_POST_PER_MINUTE; i += 1) {
+      checkRateLimit("6.6.6.7", "post-secret", behind);
+    }
+    expect(
+      checkRateLimit(
+        "6.6.6.7",
+        "post-secret",
+        behind + RATE_LIMIT_WINDOW_MS + 1,
+      ).allowed,
+    ).toBe(false);
+    checkRateLimit("1.0.0.4", "get-secret", t0 + RATE_LIMIT_WINDOW_MS + 1);
+    expect(bucketCount()).toBe(1);
+  });
+
   it("prefers the first forwarded address", () => {
     const req = new Request("http://localhost/api/secrets", {
       headers: { "x-forwarded-for": "5.5.5.5, 6.6.6.6" },
