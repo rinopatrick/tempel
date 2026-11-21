@@ -22,7 +22,8 @@ Each IP gets 10 creates and 60 reveals per minute. Past the cap the API answers 
 
 ## Run it locally
 
-You need Node and npm.
+You need Node 22.13+ (minimum) and npm. This is the first Node 22 release
+that loads `node:sqlite` without an experimental flag.
 
 ```sh
 npm ci
