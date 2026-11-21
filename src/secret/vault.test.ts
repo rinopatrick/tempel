@@ -1,8 +1,62 @@
 // @vitest-environment node
 
-import { describe, expect, it } from "vitest";
-import { createSecretVault } from "./vault";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createSecretVault, getSharedVault, resetSharedVault } from "./vault";
 import { encryptSecret } from "./crypto";
+
+describe("getSharedVault with an unavailable File Vault", () => {
+  let dbDirectory: string;
+
+  beforeEach(() => {
+    dbDirectory = mkdtempSync(join(tmpdir(), "tempel-vault-"));
+    vi.stubEnv("TEMPEL_DB_PATH", dbDirectory);
+    vi.stubEnv("TEMPEL_STORE", undefined);
+    resetSharedVault();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    resetSharedVault();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    rmSync(dbDirectory, { recursive: true, force: true });
+  });
+
+  it("surfaces and logs a production init failure instead of returning a vault", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(() => getSharedVault()).toThrow("File Vault unavailable");
+    expect(() => getSharedVault()).toThrow("File Vault unavailable");
+    expect(console.error).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalledWith(
+      "[tempel] file store unavailable",
+      expect.any(Error),
+    );
+  });
+
+  it.each([
+    { nodeEnv: "development", store: undefined, logs: 1 },
+    { nodeEnv: "production", store: "memory", logs: 0 },
+  ])("allows a memory vault with NODE_ENV=$nodeEnv and TEMPEL_STORE=$store", ({
+    nodeEnv,
+    store,
+    logs,
+  }) => {
+    vi.stubEnv("NODE_ENV", nodeEnv);
+    vi.stubEnv("TEMPEL_STORE", store);
+    const envelope = { ciphertext: "Y2k", iv: "aXY" };
+
+    getSharedVault().store("id", envelope);
+
+    expect(getSharedVault().reveal("id")).toEqual(envelope);
+    expect(console.error).toHaveBeenCalledTimes(logs);
+    resetSharedVault();
+    expect(getSharedVault().status("id")).toBeNull();
+  });
+});
 
 describe("createSecretVault", () => {
   it("reveals a stored envelope once, then refuses the second reveal", async () => {

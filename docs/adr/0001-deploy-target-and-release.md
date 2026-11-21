@@ -2,20 +2,22 @@
 
 Date: 2026-11-06. Status: accepted. Issue: #9.
 
+The proxy requirements below clarify the original decision; the deployment target is unchanged.
+
 ## Context
 
 Tempel ships a Next.js app with a SQLite file store at `data/secrets.db`.
-The limiter reads the client IP from `x-forwarded-for` first. That header
-is only trustworthy when the platform overwrites it at the edge. The repo
-has no locked deploy target, no health probe, and no single post-deploy
-verify command beyond the burn-flow probe.
+The limiter checks `CF-Connecting-IP`, `X-Vercel-Forwarded-For`,
+`X-Forwarded-For`, then `X-Real-IP`. On a single host behind a trusted
+proxy, only the client address set by that proxy is trustworthy.
 
 ## Decision
 
 Deploy target: single Node host running `next start` behind a trusted
-proxy that overwrites `X-Forwarded-For`. The proxy owns TLS and forwards
-one client address per request. The app trusts the leftmost entry only on
-this target. SQLite stays a local file under `TEMPEL_DB_PATH`, mounted
+proxy that terminates TLS, replaces `X-Forwarded-For` with one verified
+client address, and strips `CF-Connecting-IP`, `X-Vercel-Forwarded-For`,
+and `X-Real-IP` before forwarding. Only the proxy can reach the Node
+origin. SQLite stays a local file under `TEMPEL_DB_PATH`, mounted
 persistently. No multi-replica writes in v1.
 
 Env contract, all required in production:
@@ -32,8 +34,10 @@ Reproducible release checklist, same order every time:
 2. `npx tsc --noEmit`.
 3. `npm test -- --run`.
 4. `npm run build`.
-5. Boot with production env and run `node scripts/live-probe.mjs $BASE`.
-6. `GET $BASE/api/health` answers 200 `{"status":"ok"}`.
+5. Run the [isolated launch probe and storage and edge checks](../security-acceptance.md#launch-gate).
+   On the release instance, `GET /api/health` answers 200 `{"status":"ok","store":"file"}`.
+   A 503 `{"status":"unavailable","store":"file"}` means the File Vault
+   failed to initialize.
 
 ## Consequences
 

@@ -32,7 +32,7 @@ export async function createShareLink({
     method: "POST",
   });
   if (!res.ok) {
-    throw new Error(`Gagal membuat link (HTTP ${res.status}).`);
+    throw new Error(`HTTP ${res.status}.`);
   }
   const body = (await res.json()) as { id?: unknown };
   if (typeof body.id !== "string" || body.id.length === 0) {
