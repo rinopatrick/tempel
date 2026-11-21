@@ -1,15 +1,11 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/secret/composer", () => ({
-  TTL_OPTIONS: [
-    { label: "1 jam", seconds: 3600 },
-    { label: "6 jam", seconds: 21600 },
-    { label: "24 jam", seconds: 86400 },
-  ],
+vi.mock("@/secret/composer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/secret/composer")>()),
   createShareLink: vi.fn(),
 }));
 vi.mock("@/secret/reveal", async (importOriginal) => {
@@ -25,7 +21,7 @@ import {
   RevealNetworkError,
 } from "@/secret/reveal";
 import Composer from "./composer";
-import { RevealView } from "./s/reveal-view";
+import { RevealView, type RevealState } from "./s/reveal-view";
 
 /**
  * Seam: the gate doc (docs/qa/ui-state-gate.md) against the rendered
@@ -46,27 +42,81 @@ type Row = { state: string; mustSee: string };
 function gateRows(heading: string): Row[] {
   const start = GATE.indexOf(heading);
   expect(start, `${GATE_PATH} must have a "${heading}" section`).toBeGreaterThan(-1);
-  const rows: Row[] = [];
-  for (const line of GATE.slice(start).split("\n").slice(1)) {
-    if (/^(#|[A-Z])/.test(line) && rows.length > 0) break;
-    const cells = line.split("|").map((c) => c.trim());
-    if (cells.length < 4 || /^-+$/.test(cells[1]) || cells[1] === "State") {
-      continue;
-    }
-    rows.push({ state: cells[1], mustSee: cells[2] });
+  const lines = GATE.slice(start).split("\n");
+  const table: string[] = [];
+  for (const line of lines.slice(lines.findIndex((l) => l.startsWith("|")))) {
+    if (!line.startsWith("|")) break;
+    table.push(line);
   }
-  return rows;
+  return table.slice(2).map((line) => {
+    const cells = line.split("|").map((c) => c.trim());
+    return { state: cells[1], mustSee: cells[2] };
+  });
 }
 
 function quoted(mustSee: string): string[] {
   return [...mustSee.matchAll(/`([^`]+)`/g)].map(([, s]) => s);
 }
 
-/** A phrase ending in " …" names a prefix followed by a runtime value. */
-function expectRendered(html: string, phrase: string, state: string): void {
-  const needle = phrase.endsWith(" …") ? phrase.slice(0, -2) : phrase;
-  expect(html, `state "${state}" must render \`${phrase}\``).toContain(needle);
+const ATTRIBUTE = /^[\w-]+="[^"]*"$/;
+const CLASS_TOKEN = /^[a-z]+(-[a-z]+)+$/;
+const isCopy = (p: string) => !ATTRIBUTE.test(p) && !CLASS_TOKEN.test(p);
+
+/** Text a user can see: every text node outside unselected <option>s. */
+function visibleText(root: HTMLElement): string {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let text = "";
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const option = node.parentElement?.closest("option");
+    if (option && !option.selected) continue;
+    text += node.textContent;
+  }
+  return text;
 }
+
+/**
+ * A quoted phrase is an attribute (`role="alert"`), a class token
+ * (`break-all`), or visible copy. Copy ending in " …" names a prefix
+ * followed by a runtime value.
+ */
+function expectRendered(root: HTMLElement, phrase: string, state: string): void {
+  const why = `state "${state}" must render \`${phrase}\``;
+  if (ATTRIBUTE.test(phrase)) {
+    expect(root.querySelector(`[${phrase}]`), why).not.toBeNull();
+  } else if (CLASS_TOKEN.test(phrase)) {
+    expect(root.querySelector(`.${phrase}`), why).not.toBeNull();
+  } else {
+    const needle = phrase.endsWith(" …") ? phrase.slice(0, -2) : phrase;
+    expect(visibleText(root), why).toContain(needle);
+  }
+}
+
+/** A row naming `role="alert"` pins the alert's own text to its copy. */
+function expectAlertCopy(root: HTMLElement, row: Row): void {
+  const alert = root.querySelector('[role="alert"]')?.textContent ?? "";
+  for (const phrase of quoted(row.mustSee).filter(isCopy)) {
+    if (phrase.endsWith(" …")) {
+      expect(alert.startsWith(phrase.slice(0, -1)), `${row.state} alert: ${alert}`).toBe(true);
+    } else if (row.mustSee.includes("reads exactly")) {
+      expect(alert, `${row.state} alert`).toBe(phrase);
+    }
+  }
+}
+
+const COMPOSER_STATES = ["idle", "busy", "error", "link", "copy-failed"] as const;
+
+function failClipboard() {
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: {
+      writeText: vi.fn(async () => {
+        throw new Error("denied");
+      }),
+    },
+  });
+}
+
+type Reach = () => Promise<HTMLElement>;
 
 async function typeSecret(user: ReturnType<typeof userEvent.setup>) {
   await user.type(
@@ -75,7 +125,7 @@ async function typeSecret(user: ReturnType<typeof userEvent.setup>) {
   );
 }
 
-const composerStates: Record<string, () => Promise<HTMLElement>> = {
+const composerStates: Record<(typeof COMPOSER_STATES)[number], Reach> = {
   idle: async () => render(<Composer />).container,
   busy: async () => {
     const user = userEvent.setup();
@@ -104,6 +154,19 @@ const composerStates: Record<string, () => Promise<HTMLElement>> = {
     await screen.findByText(LINK);
     return container;
   },
+  "copy-failed": async () => {
+    const user = userEvent.setup();
+    failClipboard();
+    createShareLinkMock.mockResolvedValue(LINK);
+    const { container } = render(<Composer />);
+    await typeSecret(user);
+    await user.click(screen.getByRole("button", { name: /buat link/i }));
+    await screen.findByText(LINK);
+    await user.click(screen.getByRole("button", { name: /salin link/i }));
+    await screen.findByRole("alert");
+    expect(screen.getByText(LINK)).not.toBeNull();
+    return container;
+  },
 };
 
 async function revealInto(
@@ -120,7 +183,7 @@ async function revealInto(
   return container;
 }
 
-const revealStates: Record<string, () => Promise<HTMLElement>> = {
+const revealStates: Record<RevealState["status"], Reach> = {
   idle: async () => render(<RevealView id="abc_123" />).container,
   loading: () =>
     revealInto(
@@ -165,12 +228,9 @@ describe("UI state gate against the rendered states (#42)", () => {
     window.location.hash = "";
   });
 
-  it("names exactly ten states: four composer, six reveal", () => {
+  it("names the eleven states #42 gates: five composer, six reveal", () => {
     expect(gateRows("Composer, from").map((r) => r.state)).toEqual([
-      "idle",
-      "busy",
-      "error",
-      "link",
+      ...COMPOSER_STATES,
     ]);
     expect(gateRows("Reveal, from").map((r) => r.state)).toEqual([
       "idle",
@@ -180,15 +240,15 @@ describe("UI state gate against the rendered states (#42)", () => {
       "expired",
       "failed",
     ]);
+    expect(GATE).toMatch(/^## The eleven states$/m);
+    expect(GATE).toMatch(/one screenshot per state — eleven in total/);
   });
 
   it("covers every status the reveal view can reach", () => {
-    const src = readFileSync("src/app/s/reveal-view.tsx", "utf8");
-    const union = src.match(/export type RevealState =([\s\S]*?);\n/)?.[1] ?? "";
-    const statuses = [...union.matchAll(/status: "(\w+)"/g)].map(([, s]) => s);
-    expect(statuses.length).toBeGreaterThan(0);
+    // revealStates is typed Record<RevealState["status"], Reach>, so tsc
+    // fails when the union gains or loses a status; this pins the doc to it.
     expect(gateRows("Reveal, from").map((r) => r.state).sort()).toEqual(
-      statuses.sort(),
+      Object.keys(revealStates).sort(),
     );
   });
 
@@ -197,13 +257,15 @@ describe("UI state gate against the rendered states (#42)", () => {
     ...gateRows("Reveal, from").map((r) => ({ ...r, view: "reveal" })),
   ]) {
     it(`renders what the gate names for ${row.view} ${row.state}`, async () => {
-      const states = row.view === "composer" ? composerStates : revealStates;
+      const states: Record<string, Reach> =
+        row.view === "composer" ? composerStates : revealStates;
       const reach = states[row.state];
       expect(reach, `no way to reach ${row.view} ${row.state}`).toBeDefined();
-      const html = (await reach()).innerHTML;
+      const root = await reach();
       const phrases = quoted(row.mustSee);
       expect(phrases.length, `${row.view} ${row.state} names no copy`).toBeGreaterThan(0);
-      for (const phrase of phrases) expectRendered(html, phrase, row.state);
+      for (const phrase of phrases) expectRendered(root, phrase, row.state);
+      if (row.mustSee.includes('`role="alert"`')) expectAlertCopy(root, row);
     });
   }
 
@@ -216,11 +278,14 @@ describe("UI state gate against the rendered states (#42)", () => {
     const signOff = GATE.slice(GATE.indexOf("## Sign-off"));
     const boxes = signOff.match(/^- \[[ xX]\] .+$/gm) ?? [];
     expect(boxes.length).toBeGreaterThanOrEqual(4);
-    expect(boxes.some((b) => /ten screenshots/i.test(b))).toBe(true);
+    expect(boxes.some((b) => /eleven screenshots/i.test(b))).toBe(true);
     for (const box of boxes) expect(box).toMatch(/^- \[ \] /);
   });
 
-  it("tracks no screenshot or capture artifact in the repo", () => {
+  const inGitCheckout =
+    spawnSync("git", ["rev-parse", "--is-inside-work-tree"]).status === 0;
+
+  it.skipIf(!inGitCheckout)("tracks no screenshot or capture artifact in the repo", () => {
     const tracked = execFileSync("git", ["ls-files"], { encoding: "utf8" })
       .split("\n")
       .filter(Boolean);

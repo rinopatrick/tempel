@@ -1,12 +1,8 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/secret/composer", () => ({
-  TTL_OPTIONS: [
-    { label: "1 jam", seconds: 3600 },
-    { label: "6 jam", seconds: 21600 },
-    { label: "24 jam", seconds: 86400 },
-  ],
+vi.mock("@/secret/composer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/secret/composer")>()),
   createShareLink: vi.fn(),
 }));
 

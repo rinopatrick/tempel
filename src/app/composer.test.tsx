@@ -130,7 +130,9 @@ describe("<Composer />", () => {
     await user.click(screen.getByRole("button", { name: /buat link/i }));
     await screen.findByText(link);
     await user.click(screen.getByRole("button", { name: /salin/i }));
-    expect(await screen.findByRole("alert")).not.toBeNull();
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Penyalinan gagal. Salin link secara manual.",
+    );
 
     await user.click(screen.getByRole("button", { name: /buat link/i }));
 
