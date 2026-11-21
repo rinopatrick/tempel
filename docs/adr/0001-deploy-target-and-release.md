@@ -35,7 +35,9 @@ Reproducible release checklist, same order every time:
 3. `npm test -- --run`.
 4. `npm run build`.
 5. Run the [isolated launch probe and storage and edge checks](../security-acceptance.md#launch-gate).
-6. `GET $BASE/api/health` answers 200 `{"status":"ok"}`.
+   On the release instance, `GET /api/health` answers 200 `{"status":"ok","store":"file"}`.
+   A 503 `{"status":"unavailable","store":"file"}` means the File Vault
+   failed to initialize.
 
 ## Consequences
 

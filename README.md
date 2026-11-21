@@ -54,7 +54,9 @@ TEMPEL_DB_PATH=/var/lib/tempel/secrets.db PORT=3111 node_modules/.bin/next start
 
 Run the [launch probe](docs/security-acceptance.md#launch-gate) against an isolated instance, not the production database.
 
-`GET /api/health` answers `200 { "status": "ok" }`.
+`GET /api/health` answers `200 { "status": "ok", "store": "file" }` for a
+healthy production File Vault, or `503 { "status": "unavailable", "store": "file" }`
+if it cannot initialize. A running memory store reports `"store": "memory"`.
 
 | Variable | Meaning |
 |---|---|

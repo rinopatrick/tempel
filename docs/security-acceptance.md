@@ -48,7 +48,7 @@ Use the [glossary](../GLOSSARY.md) for domain terms.
 - There is no recipient authentication. A leaked link can be redeemed first, and even an ID without the key can consume its envelope. Atomic Burn prevents multiple successful downloads, not unauthorized first use. A dropped response can consume the link without delivering the Secret; a recipient can also keep a copy.
 - Shared NATs share one IP budget and can hit false positives. The per-route constants are tunable; the limiter is not a global DDoS defense. Its in-process counters reset on restart. Distributed rate-limit state is outside v1.
 - Compromised endpoints (including browsers, extensions, or actively modified application code) and exposure of the full link through the sharing channel, clipboard, or browser history (including synced history) are outside the model.
-- A file-init failure falls back to the in-memory vault, which loses Secrets and Burned/Expired state on restart. This is not acceptable in production; prove the file vault is in use before launch.
+- If the File Vault cannot initialize in production, health and valid Create and Reveal requests return `503` instead of falling back to memory. Memory mode is still available by explicit override or after a non-production initialization failure; it loses Secrets and Burned/Expired state on restart and is not acceptable for launch. See the [health](../src/app/api/health/route.test.ts) and [persistent HTTP route](../src/app/api/secrets/persistent-route.test.ts) tests.
 - The seed route is for isolated verification only. If enabled on a public instance, it permits unauthorized writes that can destroy existing Secrets without revealing them.
 - Deployment target selection belongs to [ADR-0001](adr/0001-deploy-target-and-release.md); the [visual UI gate](qa/ui-state-gate.md) is separate. Multi-recipient sharing and server key rotation are out of scope; v1 holds no server-side Secret decryption key.
 
@@ -63,7 +63,7 @@ Do not mark the security gate green until every item passes on the release candi
   - The past-expiry fixture returns `410` with reason `expired`.
   - The over-budget POST returns `429` with `Retry-After`.
   - All probe assertions pass, including health, malformed and unknown IDs, and key rejection. The script exits zero with `LIVE PROBE GREEN`.
-- [ ] Prove the probe used SQLite: the app log contains no `[tempel] file store unavailable` warning, and the fresh file at `TEMPEL_DB_PATH` contains both `burned` and `expired` rows. Check the file read-only with a SQLite client:
+- [ ] Prove the probe used SQLite: `GET /api/health` returns `200 {"status":"ok","store":"file"}`, the app log contains no `[tempel] file store unavailable` error, and the fresh file at `TEMPEL_DB_PATH` contains both `burned` and `expired` rows. Check the file read-only with a SQLite client:
 
   ```sql
   SELECT state, count(*) FROM secrets
@@ -72,4 +72,4 @@ Do not mark the security gate green until every item passes on the release candi
 
   Both states must have a nonzero count. The HTTP probe also passes in memory mode, so its success alone is not evidence of persistence.
 - [ ] Verify the deployment edge before public traffic. The URL serves valid HTTPS and the Node origin is not directly reachable. Inspect the proxy configuration and a test request at the origin: `X-Forwarded-For` contains exactly the known client address, and the other three client-IP headers are stripped.
-- [ ] On the release configuration with `TEMPEL_PROBE_SEED` unset or `0`, `POST /api/seed-expired` returns `404` through the edge. Create a disposable Secret, reveal it through the edge, and repeat the same GET: the first response is `200` and the second is `410 burned`, not a cached envelope. Verify the edge is configured to bypass caching on the Reveal API and the disposable Secret's `burned` row is in the configured production SQLite file.
+- [ ] On the release configuration with `TEMPEL_PROBE_SEED` unset or `0`, health reports `200 {"status":"ok","store":"file"}` and `POST /api/seed-expired` returns `404` through the edge. Create a disposable Secret, reveal it through the edge, and repeat the same GET: the first response is `200` and the second is `410 burned`, not a cached envelope. Verify the edge is configured to bypass caching on the Reveal API and the disposable Secret's `burned` row is in the configured production SQLite file.
