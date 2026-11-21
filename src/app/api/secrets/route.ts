@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, clientIp } from "@/secret/rate-limit";
-import { getSharedVault } from "@/secret/vault";
+import { getSharedVault, VaultUnavailableError } from "@/secret/vault";
 
 const TTL_ALLOWLIST = [3_600, 21_600, 86_400];
 
@@ -71,10 +71,15 @@ export async function POST(request: Request) {
     expiresAt = Date.now() + ttlSeconds * 1000;
   }
   const id = newId();
-  getSharedVault().store(
-    id,
-    { ciphertext: ciphertext as string, iv: iv as string },
-    expiresAt,
-  );
+  try {
+    getSharedVault().store(
+      id,
+      { ciphertext: ciphertext as string, iv: iv as string },
+      expiresAt,
+    );
+  } catch (error) {
+    if (!(error instanceof VaultUnavailableError)) throw error;
+    return NextResponse.json({ error: "store-unavailable" }, { status: 503 });
+  }
   return NextResponse.json({ id }, { status: 201 });
 }

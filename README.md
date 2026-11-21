@@ -51,7 +51,9 @@ TEMPEL_DB_PATH=/var/lib/tempel/secrets.db PORT=3111 node_modules/.bin/next start
 node scripts/live-probe.mjs http://localhost:3111
 ```
 
-`GET /api/health` answers `200 { "status": "ok" }`.
+`GET /api/health` answers `200 { "status": "ok", "store": "file" }` for a
+healthy production File Vault, or `503 { "status": "unavailable", "store": "file" }`
+if it cannot initialize. A running memory store reports `"store": "memory"`.
 
 | Variable | Meaning |
 |---|---|
