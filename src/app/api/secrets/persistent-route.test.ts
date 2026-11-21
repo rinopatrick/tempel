@@ -42,6 +42,7 @@ describe("routes against the persistent store", () => {
     const res = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
 
     expect(res.status).toBe(503);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ error: "store-unavailable" });
   });
 
@@ -56,6 +57,7 @@ describe("routes against the persistent store", () => {
     });
 
     expect(res.status).toBe(503);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ error: "store-unavailable" });
   });
 
@@ -173,6 +175,7 @@ describe("routes against the persistent store", () => {
       expect(next.status).toBe(201);
       const purged = await get();
       expect(purged.status).toBe(404);
+      expect(purged.headers.get("Cache-Control")).toBe("no-store");
       expect(await purged.json()).toEqual({ error: "unknown" });
     } finally {
       clock.mockRestore();

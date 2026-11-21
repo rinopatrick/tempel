@@ -84,6 +84,45 @@ describe("<RevealView />", () => {
     expect(secret.className).toMatch(/break-all/);
   });
 
+  it("holds the revealed secret and local-decrypt note in one paper panel", async () => {
+    const user = userEvent.setup();
+    revealMock.mockResolvedValue("db-prod-9f2k");
+    render(<RevealView id="abc_123" />);
+    await user.click(
+      screen.getByRole("button", { name: /tampilkan dan hapus link/i }),
+    );
+    const secret = await screen.findByText("db-prod-9f2k");
+    const note = screen.getByText("Didekripsi lokal. Salin sekarang.");
+    const panel = secret.parentElement;
+    expect(panel?.className).toMatch(/--tempel-paper/);
+    expect(note.parentElement).toBe(panel);
+    expect(note.className).toMatch(/--tempel-muted/);
+  });
+
+  it("gives burned, expired, and failed distinct headings", async () => {
+    const user = userEvent.setup();
+    const headings: string[] = [];
+    for (const err of [
+      new RevealBurnedError(),
+      new RevealExpiredError(),
+      new RevealNetworkError(),
+    ]) {
+      revealMock.mockRejectedValueOnce(err);
+      render(<RevealView id="abc_123" />);
+      await user.click(
+        screen.getByRole("button", { name: /tampilkan dan hapus link/i }),
+      );
+      await screen.findByRole("alert");
+      headings.push(screen.getByRole("heading", { level: 1 }).textContent ?? "");
+      cleanup();
+    }
+    expect(headings).toEqual([
+      "Link sudah hangus.",
+      "Link kedaluwarsa.",
+      "Link tidak bisa dibuka.",
+    ]);
+  });
+
   it("shows loading with canvas tokens while the reveal is in flight", async () => {
     const user = userEvent.setup();
     revealMock.mockImplementation(() => new Promise<string>(() => {}));

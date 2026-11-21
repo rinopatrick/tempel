@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { createShareLink, TTL_OPTIONS } from "@/secret/composer";
 
+const COPY_FAILED = "Penyalinan gagal. Salin link secara manual.";
+
 export default function Composer() {
   const [secret, setSecret] = useState("");
   const [ttlSeconds, setTtlSeconds] = useState<number>(TTL_OPTIONS[0].seconds);
@@ -25,7 +27,9 @@ export default function Composer() {
       setLink(shareLink);
     } catch (err) {
       setLink(null);
-      setError(err instanceof Error ? err.message : "Gagal membuat link.");
+      setError(
+        err instanceof Error ? `Gagal membuat link: ${err.message}` : "Gagal membuat link.",
+      );
     } finally {
       setBusy(false);
     }
@@ -36,8 +40,10 @@ export default function Composer() {
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
+      setError((current) => (current === COPY_FAILED ? null : current));
     } catch {
-      setError("Penyalinan gagal. Salin link secara manual.");
+      setCopied(false);
+      setError(COPY_FAILED);
     }
   }
 
@@ -86,7 +92,7 @@ export default function Composer() {
       </form>
       {error !== null && (
         <p role="alert" className="mt-4 text-[15px] text-[var(--tempel-ink)]">
-          Gagal membuat link: {error}
+          {error}
         </p>
       )}
       {link !== null && (

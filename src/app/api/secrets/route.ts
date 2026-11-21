@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { checkRateLimit, clientIp } from "@/secret/rate-limit";
 import { getSharedVault, VaultUnavailableError } from "@/secret/vault";
+import { noStoreJson } from "./no-store-json";
 
 const TTL_ALLOWLIST = [3_600, 21_600, 86_400];
 
@@ -34,7 +34,7 @@ function newId(): string {
 export async function POST(request: Request) {
   const limited = checkRateLimit(clientIp(request), "post-secret");
   if (!limited.allowed) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "rate-limited" },
       {
         headers: { "Retry-After": String(limited.retryAfterSeconds) },
@@ -46,18 +46,18 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "bad-envelope" }, { status: 400 });
+    return noStoreJson({ error: "bad-envelope" }, { status: 400 });
   }
   if (typeof body !== "object" || body === null) {
-    return NextResponse.json({ error: "bad-envelope" }, { status: 400 });
+    return noStoreJson({ error: "bad-envelope" }, { status: 400 });
   }
   const record = body as Record<string, unknown>;
   if ("key" in record || "plaintext" in record) {
-    return NextResponse.json({ error: "key-rejected" }, { status: 400 });
+    return noStoreJson({ error: "key-rejected" }, { status: 400 });
   }
   const { ciphertext, iv, ttlSeconds } = record;
   if (!base64UrlField(ciphertext) || !base64UrlField(iv)) {
-    return NextResponse.json({ error: "bad-envelope" }, { status: 400 });
+    return noStoreJson({ error: "bad-envelope" }, { status: 400 });
   }
   let expiresAt: number | undefined;
   if (ttlSeconds !== undefined) {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       !Number.isInteger(ttlSeconds) ||
       !TTL_ALLOWLIST.includes(ttlSeconds)
     ) {
-      return NextResponse.json({ error: "bad-ttl" }, { status: 400 });
+      return noStoreJson({ error: "bad-ttl" }, { status: 400 });
     }
     expiresAt = Date.now() + ttlSeconds * 1000;
   }
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (!(error instanceof VaultUnavailableError)) throw error;
-    return NextResponse.json({ error: "store-unavailable" }, { status: 503 });
+    return noStoreJson({ error: "store-unavailable" }, { status: 503 });
   }
-  return NextResponse.json({ id }, { status: 201 });
+  return noStoreJson({ id }, { status: 201 });
 }

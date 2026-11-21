@@ -45,6 +45,8 @@ check(
   first.status === 200 && firstJson.ciphertext === "Y2k" && firstJson.iv === "aXY",
   `status=${first.status} body=${JSON.stringify(firstJson)}`,
 );
+const firstCacheControl = first.headers.get("cache-control");
+check("reveal 200 no-store", firstCacheControl === "no-store", `cache-control=${firstCacheControl}`);
 
 const second = await fetch(`${base}/api/secrets/${id}`);
 const secondJson = await second.json().catch(() => ({}));
@@ -53,6 +55,8 @@ check(
   second.status === 410 && secondJson.reason === "burned",
   `status=${second.status} body=${JSON.stringify(secondJson)}`,
 );
+const secondCacheControl = second.headers.get("cache-control");
+check("reveal 410 no-store", secondCacheControl === "no-store", `cache-control=${secondCacheControl}`);
 
 const unknownId = "a".repeat(22);
 const unknown = await fetch(`${base}/api/secrets/${unknownId}`);
