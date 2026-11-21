@@ -52,9 +52,12 @@ describe("<Composer />", () => {
     );
   });
 
-  it("shows an error when creation fails and keeps no link", async () => {
+  it("shows a create error and clears the previous link when creation fails", async () => {
     const user = userEvent.setup();
-    createShareLinkMock.mockRejectedValue(new Error("server down"));
+    const link = `https://tempel.test/s/server-id-1#${"A".repeat(43)}`;
+    createShareLinkMock
+      .mockResolvedValueOnce(link)
+      .mockRejectedValueOnce(new Error("server down"));
     render(<Composer />);
 
     await user.type(
@@ -62,10 +65,12 @@ describe("<Composer />", () => {
       "db-prod-9f2k",
     );
     await user.click(screen.getByRole("button", { name: /buat link/i }));
+    await screen.findByText(link);
+    await user.click(screen.getByRole("button", { name: /buat link/i }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toMatch(/gagal/i);
-    expect(screen.queryByText(/https:\/\/tempel\.test\/s\//)).toBeNull();
+    expect(alert.textContent).toBe("Gagal membuat link: server down");
+    expect(screen.queryByText(link)).toBeNull();
   });
 
   it("disables submit with progress text while busy", async () => {
@@ -119,12 +124,11 @@ describe("<Composer />", () => {
     ).not.toBeNull();
   });
 
-  it("names manual copy when clipboard write fails", async () => {
+  it("shows a copy error and keeps the share link when clipboard write fails", async () => {
     const user = userEvent.setup();
     const key = "A".repeat(43);
-    createShareLinkMock.mockResolvedValue(
-      `https://tempel.test/s/server-id-1#${key}`,
-    );
+    const link = `https://tempel.test/s/server-id-1#${key}`;
+    createShareLinkMock.mockResolvedValue(link);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: {
@@ -140,11 +144,12 @@ describe("<Composer />", () => {
       "db-prod-9f2k",
     );
     await user.click(screen.getByRole("button", { name: /buat link/i }));
-    await screen.findByText(/https:\/\/tempel\.test\/s\/server-id-1#/);
+    await screen.findByText(link);
     await user.click(screen.getByRole("button", { name: /salin/i }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toMatch(/salin link secara manual/i);
+    expect(alert.textContent).toBe("Penyalinan gagal. Salin link secara manual.");
+    expect(screen.getByText(link)).not.toBeNull();
   });
 
   it("uses the canvas body font and mono stacks", async () => {

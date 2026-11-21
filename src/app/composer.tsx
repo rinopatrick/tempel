@@ -25,7 +25,9 @@ export default function Composer() {
       setLink(shareLink);
     } catch (err) {
       setLink(null);
-      setError(err instanceof Error ? err.message : "Gagal membuat link.");
+      setError(
+        err instanceof Error ? `Gagal membuat link: ${err.message}` : "Gagal membuat link.",
+      );
     } finally {
       setBusy(false);
     }
@@ -86,7 +88,7 @@ export default function Composer() {
       </form>
       {error !== null && (
         <p role="alert" className="mt-4 text-[15px] text-[var(--tempel-ink)]">
-          Gagal membuat link: {error}
+          {error}
         </p>
       )}
       {link !== null && (
