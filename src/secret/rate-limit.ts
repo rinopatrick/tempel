@@ -6,6 +6,8 @@ interface Bucket {
   hits: number[];
 }
 
+// Insertion order tracks each bucket's newest hit: a bucket is re-inserted
+// whenever it records a hit, so idle buckets collect at the front.
 const buckets = new Map<string, Bucket>();
 
 function bucketKey(ip: string, scope: string): string {
@@ -19,6 +21,15 @@ function prune(now: number, bucket: Bucket): void {
   }
 }
 
+function evictIdle(now: number): void {
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  for (const [key, bucket] of buckets) {
+    const newest = bucket.hits[bucket.hits.length - 1];
+    if (newest !== undefined && newest > cutoff) break;
+    buckets.delete(key);
+  }
+}
+
 export function checkRateLimit(
   ip: string,
   scope: "post-secret" | "get-secret",
@@ -28,6 +39,7 @@ export function checkRateLimit(
     scope === "post-secret"
       ? RATE_LIMIT_POST_PER_MINUTE
       : RATE_LIMIT_GET_PER_MINUTE;
+  evictIdle(now);
   const key = bucketKey(ip, scope);
   let bucket = buckets.get(key);
   if (bucket === undefined) {
@@ -44,6 +56,8 @@ export function checkRateLimit(
     return { allowed: false, retryAfterSeconds };
   }
   bucket.hits.push(now);
+  buckets.delete(key);
+  buckets.set(key, bucket);
   return { allowed: true, retryAfterSeconds: 0 };
 }
 
@@ -70,4 +84,9 @@ export function clientIp(request: Request): string {
 // Test seam: drop all in-process buckets between cases.
 export function resetRateLimits(): void {
   buckets.clear();
+}
+
+// Test seam: number of live in-process buckets.
+export function bucketCount(): number {
+  return buckets.size;
 }
