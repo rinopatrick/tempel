@@ -33,7 +33,9 @@ Reproducible release checklist, same order every time:
 3. `npm test -- --run`.
 4. `npm run build`.
 5. Boot with production env and run `node scripts/live-probe.mjs $BASE`.
-6. `GET $BASE/api/health` answers 200 `{"status":"ok"}`.
+6. `GET $BASE/api/health` answers 200 `{"status":"ok","store":"file"}`.
+   A 503 `{"status":"unavailable","store":"file"}` means the File Vault
+   failed to initialize.
 
 ## Consequences
 

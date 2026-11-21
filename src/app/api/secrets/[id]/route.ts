@@ -1,5 +1,5 @@
 import { checkRateLimit, clientIp } from "@/secret/rate-limit";
-import { getSharedVault } from "@/secret/vault";
+import { getSharedVault, VaultUnavailableError } from "@/secret/vault";
 import { noStoreJson } from "../no-store-json";
 
 function invalidId(id: unknown): boolean {
@@ -24,10 +24,16 @@ export async function GET(
   if (invalidId(id)) {
     return noStoreJson({ error: "unknown" }, { status: 404 });
   }
-  const envelope = getSharedVault().reveal(id);
-  if (envelope === null) {
-    const reason = getSharedVault().goneReason(id);
-    return noStoreJson({ error: "gone", reason }, { status: 410 });
+  try {
+    const vault = getSharedVault();
+    const envelope = vault.reveal(id);
+    if (envelope === null) {
+      const reason = vault.goneReason(id);
+      return noStoreJson({ error: "gone", reason }, { status: 410 });
+    }
+    return noStoreJson(envelope);
+  } catch (error) {
+    if (!(error instanceof VaultUnavailableError)) throw error;
+    return noStoreJson({ error: "store-unavailable" }, { status: 503 });
   }
-  return noStoreJson(envelope);
 }
