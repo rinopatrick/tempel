@@ -121,6 +121,33 @@ check(
   `status=${floodRes?.status} retry-after=${floodRes?.headers.get("retry-after")}`,
 );
 
+// Security headers (#70): every page and API route, never X-Powered-By.
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "object-src 'none'",
+];
+for (const path of ["/", `/s/${"h".repeat(ID_LEN)}`, "/api/health"]) {
+  const res = await fetch(`${base}${path}`);
+  await res.text().catch(() => "");
+  const h = res.headers;
+  const csp = h.get("content-security-policy") ?? "";
+  const missing = CSP_DIRECTIVES.filter((d) => !csp.includes(d));
+  check(
+    `security headers ${path}`,
+    missing.length === 0 &&
+      h.get("x-frame-options") === "DENY" &&
+      h.get("x-content-type-options") === "nosniff" &&
+      h.get("referrer-policy") === "no-referrer" &&
+      !h.has("x-powered-by"),
+    `csp-missing=${JSON.stringify(missing)} xfo=${h.get("x-frame-options")} xcto=${h.get("x-content-type-options")} referrer=${h.get("referrer-policy")} powered-by=${h.get("x-powered-by")}`,
+  );
+}
+
 for (const r of results) console.log(`${r.pass ? "PASS" : "FAIL"} ${r.name} :: ${r.detail}`);
 if (results.some((r) => !r.pass)) process.exit(1);
 console.log("LIVE PROBE GREEN");
