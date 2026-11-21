@@ -15,7 +15,9 @@ import { GET } from "./route";
 import * as route from "./route";
 
 function headRequest(id: string) {
-  const handler = (route as { HEAD?: typeof GET }).HEAD ?? GET;
+  const handler = (route as {
+    HEAD?: (...args: Parameters<typeof GET>) => Promise<Response>;
+  }).HEAD ?? GET;
   return handler(new Request(`http://localhost/api/secrets/${id}`, { method: "HEAD" }), {
     params: Promise.resolve({ id }),
   });
