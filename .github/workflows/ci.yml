@@ -31,3 +31,4 @@ jobs:
       - run: npm exec -- tsc --noEmit
       - run: npm test
       - run: npm run build
+      - run: bash scripts/verify-release.sh

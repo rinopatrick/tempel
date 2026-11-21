@@ -77,11 +77,10 @@ interface FileVaultRow {
 export function createFileVault(dbPath: string): SecretVault {
   mkdirSync(dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
-  // WAL lets readers proceed while a burn holds the write lock; a bounded
-  // busy timeout makes a losing revealer wait for the winner's COMMIT and
-  // then observe the burned row instead of throwing SQLITE_BUSY.
-  db.exec("PRAGMA journal_mode = WAL");
+  // Set the busy timeout before enabling WAL so concurrent vault creation
+  // and a reveal waiting for a competing burn both wait on the lock.
   db.exec("PRAGMA busy_timeout = 5000");
+  db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA secure_delete = ON");
   db.exec(
     `CREATE TABLE IF NOT EXISTS secrets (

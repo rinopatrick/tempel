@@ -1,0 +1,55 @@
+name: tempel-staging
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      TEMPEL_DB_PATH: /var/lib/tempel/secrets.db
+    volumes:
+      - vault:/var/lib/tempel
+    networks:
+      - origin
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3000/api/health')
+          .then(async (res) => {
+            const health = await res.json();
+            if (res.status !== 200 || health.status !== 'ok' || health.store !== 'file') process.exitCode = 1;
+          })
+          .catch(() => { process.exitCode = 1; });
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      TEMPEL_STAGING_DOMAIN: ${TEMPEL_STAGING_DOMAIN:?Set the staging hostname}
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    networks:
+      - default
+      - origin
+
+networks:
+  origin:
+    internal: true
+
+volumes:
+  vault:
+  caddy-data:

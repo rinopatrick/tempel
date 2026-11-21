@@ -1,0 +1,8 @@
+https://{$TEMPEL_STAGING_DOMAIN} {
+	reverse_proxy app:3000 {
+		header_up X-Forwarded-For {remote_host}
+		header_up -CF-Connecting-IP
+		header_up -X-Vercel-Forwarded-For
+		header_up -X-Real-IP
+	}
+}
