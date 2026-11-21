@@ -1,7 +1,7 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/secrets/route";
 import { GET } from "@/app/api/secrets/[id]/route";
@@ -16,13 +16,45 @@ function jsonRequest(body: unknown): Request {
 }
 
 describe("routes against the persistent store", () => {
+  let dbDirectory: string;
+
   beforeEach(() => {
-    process.env.TEMPEL_DB_PATH = join(
-      mkdtempSync(join(tmpdir(), "tempel-route-")),
-      "secrets.db",
-    );
-    delete process.env.TEMPEL_STORE;
+    dbDirectory = mkdtempSync(join(tmpdir(), "tempel-route-"));
+    vi.stubEnv("TEMPEL_DB_PATH", join(dbDirectory, "secrets.db"));
+    vi.stubEnv("TEMPEL_STORE", undefined);
     resetSharedVault();
+  });
+
+  afterEach(() => {
+    resetSharedVault();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    rmSync(dbDirectory, { recursive: true, force: true });
+  });
+
+  it("returns 503 on create when the production File Vault cannot open", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TEMPEL_DB_PATH", dbDirectory);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "store-unavailable" });
+  });
+
+  it("returns 503 on reveal when the production File Vault cannot open", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TEMPEL_DB_PATH", dbDirectory);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const id = "a".repeat(22);
+
+    const res = await GET(new Request(`http://localhost/api/secrets/${id}`), {
+      params: Promise.resolve({ id }),
+    });
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "store-unavailable" });
   });
 
   it("POST 201 then reveal 200 then 410 burned across shared instances", async () => {
