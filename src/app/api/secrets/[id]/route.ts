@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { checkRateLimit, clientIp } from "@/secret/rate-limit";
 import { getSharedVault } from "@/secret/vault";
+import { noStoreJson } from "../no-store-json";
 
 function invalidId(id: unknown): boolean {
   return typeof id !== "string" || !/^[A-Za-z0-9_-]{22}$/.test(id);
@@ -13,7 +13,7 @@ export async function GET(
   const { id } = await params;
   const limited = checkRateLimit(clientIp(_request), "get-secret");
   if (!limited.allowed) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "rate-limited" },
       {
         headers: { "Retry-After": String(limited.retryAfterSeconds) },
@@ -22,12 +22,12 @@ export async function GET(
     );
   }
   if (invalidId(id)) {
-    return NextResponse.json({ error: "unknown" }, { status: 404 });
+    return noStoreJson({ error: "unknown" }, { status: 404 });
   }
   const envelope = getSharedVault().reveal(id);
   if (envelope === null) {
     const reason = getSharedVault().goneReason(id);
-    return NextResponse.json({ error: "gone", reason }, { status: 410 });
+    return noStoreJson({ error: "gone", reason }, { status: 410 });
   }
-  return NextResponse.json(envelope);
+  return noStoreJson(envelope);
 }

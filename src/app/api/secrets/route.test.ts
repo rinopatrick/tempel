@@ -31,6 +31,7 @@ describe("POST /api/secrets", () => {
   it("stores the envelope and returns a server-generated id", async () => {
     const res = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
     expect(res.status).toBe(201);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     const body = await res.json();
     expect(typeof body.id).toBe("string");
     expect(body.id).toMatch(/^[A-Za-z0-9_-]{22}$/);
@@ -50,6 +51,7 @@ describe("POST /api/secrets", () => {
       jsonRequest({ ciphertext: "Y2k", iv: "aXY", key: "k" }),
     );
     expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ error: "key-rejected" });
     expect(storeMock).not.toHaveBeenCalled();
   });
@@ -89,6 +91,7 @@ describe("POST /api/secrets", () => {
     }
     const res = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
     expect(res.status).toBe(429);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(res.headers.get("Retry-After")).not.toBeNull();
     expect(await res.json()).toEqual({ error: "rate-limited" });
     expect(storeMock).toHaveBeenCalledTimes(10);
