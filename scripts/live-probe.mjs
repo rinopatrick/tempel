@@ -1,51 +1,68 @@
-// Live probe: file-based bodies only, no inline quoting.
-// Usage: TEMPEL_PROBE_SEED=1 node scripts/live-probe.mjs [baseUrl]
-// The expired check needs POST /api/seed-expired, which answers 404
-// unless the server runs with TEMPEL_PROBE_SEED=1.
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+// Isolated instance with the seed route enabled: node scripts/live-probe.mjs [baseUrl]
+// HTTPS staging edge with the seed route disabled: node scripts/live-probe.mjs https://host --edge
+const [target = "http://localhost:3111", mode, ...extra] = process.argv.slice(2);
+if ((mode !== undefined && mode !== "--edge") || extra.length > 0) {
+  throw new Error("Usage: node scripts/live-probe.mjs [baseUrl] [--edge]");
+}
 
-const base = process.argv[2] ?? "http://localhost:3111";
-const dir = join(tmpdir(), "tempel-probe");
-mkdirSync(dir, { recursive: true });
-const bodyPath = join(dir, "body.json");
-const keyPath = join(dir, "key.json");
-writeFileSync(bodyPath, JSON.stringify({ ciphertext: "Y2k", iv: "aXY" }));
-writeFileSync(keyPath, JSON.stringify({ ciphertext: "Y2k", iv: "aXY", key: "k" }));
-const body = readFileSync(bodyPath, "utf8");
-const keyBody = readFileSync(keyPath, "utf8");
+const base = new URL(target);
+const edge = mode === "--edge";
+if (edge && base.protocol !== "https:") {
+  throw new Error("The edge probe requires an HTTPS URL.");
+}
+
+function request(path, init) {
+  return fetch(new URL(path, base), {
+    ...init,
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+  });
+}
+
+const body = JSON.stringify({ ciphertext: "Y2k", iv: "aXY" });
+const keyBody = JSON.stringify({ ciphertext: "Y2k", iv: "aXY", key: "k" });
 
 const results = [];
 function check(name, cond, detail) {
   results.push({ name, pass: Boolean(cond), detail });
 }
 
-const health = await fetch(`${base}/api/health`);
+const health = await request("/api/health");
 const healthJson = await health.json().catch(() => ({}));
-check(
-  "health 200 ok",
-  health.status === 200 && healthJson.status === "ok",
-  `status=${health.status} body=${JSON.stringify(healthJson)}`,
-);
+if (health.status !== 200 || healthJson.status !== "ok" || healthJson.store !== "file") {
+  throw new Error(`Expected a healthy File Vault, got ${health.status} ${JSON.stringify(healthJson)}`);
+}
+check("health 200 ok file", true, `body=${JSON.stringify(healthJson)}`);
 
-const created = await fetch(`${base}/api/secrets`, {
+if (edge) {
+  const seed = await request("/api/seed-expired", { method: "POST" });
+  const seedJson = await seed.json().catch(() => ({}));
+  if (seed.status !== 404 || seedJson.error !== "unknown") {
+    throw new Error(`Expected the seed route to be disabled, got ${seed.status}`);
+  }
+  check("404 seed disabled", true, `status=${seed.status}`);
+}
+
+const created = await request("/api/secrets", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body,
 });
 const createdJson = await created.json().catch(() => ({}));
-check("POST 201", created.status === 201, `status=${created.status} id=${createdJson.id}`);
-const id = createdJson.id;
+const id = createdJson?.id;
+if (created.status !== 201 || typeof id !== "string" || !/^[A-Za-z0-9_-]{22}$/.test(id)) {
+  throw new Error(`Expected a new secret ID, got ${created.status}`);
+}
+check("POST 201", true, `status=${created.status} id=${id}`);
 
-const head = await fetch(`${base}/api/secrets/${id}`, { method: "HEAD" });
+const head = await request(`/api/secrets/${id}`, { method: "HEAD" });
 check(
   "HEAD 405 Allow GET empty body",
   head.status === 405 && head.headers.get("allow") === "GET" && (await head.text()) === "",
   `status=${head.status} allow=${head.headers.get("allow")}`,
 );
 
-const first = await fetch(`${base}/api/secrets/${id}`);
+const first = await request(`/api/secrets/${id}`);
 const firstJson = await first.json().catch(() => ({}));
 check(
   "reveal 200 envelope",
@@ -55,7 +72,7 @@ check(
 const firstCacheControl = first.headers.get("cache-control");
 check("reveal 200 no-store", firstCacheControl === "no-store", `cache-control=${firstCacheControl}`);
 
-const second = await fetch(`${base}/api/secrets/${id}`);
+const second = await request(`/api/secrets/${id}`);
 const secondJson = await second.json().catch(() => ({}));
 check(
   "reveal 410 burned",
@@ -66,7 +83,7 @@ const secondCacheControl = second.headers.get("cache-control");
 check("reveal 410 no-store", secondCacheControl === "no-store", `cache-control=${secondCacheControl}`);
 
 const unknownId = "a".repeat(22);
-const unknown = await fetch(`${base}/api/secrets/${unknownId}`);
+const unknown = await request(`/api/secrets/${unknownId}`);
 const unknownJson = await unknown.json().catch(() => ({}));
 check(
   "404 unknown",
@@ -74,10 +91,10 @@ check(
   `status=${unknown.status} body=${JSON.stringify(unknownJson)}`,
 );
 
-const bad = await fetch(`${base}/api/secrets/bad___id`);
+const bad = await request("/api/secrets/bad___id");
 check("404 bad id", bad.status === 404, `status=${bad.status}`);
 
-const keyRejected = await fetch(`${base}/api/secrets`, {
+const keyRejected = await request("/api/secrets", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: keyBody,
@@ -89,48 +106,42 @@ check(
   `status=${keyRejected.status} body=${JSON.stringify(keyJson)}`,
 );
 
-// Expired: shortest allowlisted TTL then reveal with the clock past it is
-// not observable live, so seed a past-expiry row directly in the file
-// store and prove reveal reports 410 expired (TTL path, not Burned).
 const ID_LEN = 22;
-const expiredId = "e".repeat(ID_LEN);
-const seed = await fetch(`${base}/api/seed-expired`, {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ id: expiredId }),
-});
-if (seed.status === 404) {
-  check("410 expired", false, "seed route missing: expected POST /api/seed-expired");
-} else {
-  const expired = await fetch(`${base}/api/secrets/${expiredId}`);
+if (!edge) {
+  // Seed a past-expiry row on the isolated instance to verify the TTL path.
+  const expiredId = "e".repeat(ID_LEN);
+  const seed = await request("/api/seed-expired", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: expiredId }),
+  });
+  if (seed.status !== 201) {
+    throw new Error(`Expected the isolated seed route to return 201, got ${seed.status}`);
+  }
+
+  const expired = await request(`/api/secrets/${expiredId}`);
   const expiredJson = await expired.json().catch(() => ({}));
   check(
     "410 expired",
     expired.status === 410 && expiredJson.reason === "expired",
     `status=${expired.status} body=${JSON.stringify(expiredJson)}`,
   );
-}
 
-// Flood: fresh test IP so the earlier probe POSTs stay out of budget.
-// POST budget is 10 per minute: 10 warmups fill it, the 11th must 429.
-const POST_BUDGET = 10;
-const floodIp = "203.0.113.99";
-let floodRes = null;
-for (let i = 0; i <= POST_BUDGET; i += 1) {
-  floodRes = await fetch(`${base}/api/secrets`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-forwarded-for": floodIp },
-    body,
-  });
-  await floodRes.text().catch(() => "");
+  // Give the isolated rate-limit check its own fixture IP budget.
+  const postBudget = 10;
+  let limited;
+  for (let i = 0; i <= postBudget; i += 1) {
+    limited = await request("/api/secrets", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.99" },
+      body,
+    });
+    await limited.text();
+  }
+  const retryAfter = limited.headers.get("retry-after");
+  check("429 with Retry-After", limited.status === 429 && retryAfter !== null,
+    `status=${limited.status} retry-after=${retryAfter}`);
 }
-check(
-  "429 flood with Retry-After",
-  floodRes !== null &&
-    floodRes.status === 429 &&
-    floodRes.headers.get("retry-after") !== null,
-  `status=${floodRes?.status} retry-after=${floodRes?.headers.get("retry-after")}`,
-);
 
 // Security headers (#70): every page and API route, never X-Powered-By.
 // Exact production CSP values, so a dev build ('unsafe-eval') or a widened
@@ -156,7 +167,7 @@ function parseCsp(header) {
   return directives;
 }
 for (const path of ["/", `/s/${"h".repeat(ID_LEN)}`, "/api/health"]) {
-  const res = await fetch(`${base}${path}`);
+  const res = await request(path);
   await res.text().catch(() => "");
   const h = res.headers;
   const csp = parseCsp(h.get("content-security-policy") ?? "");
@@ -176,4 +187,4 @@ for (const path of ["/", `/s/${"h".repeat(ID_LEN)}`, "/api/health"]) {
 
 for (const r of results) console.log(`${r.pass ? "PASS" : "FAIL"} ${r.name} :: ${r.detail}`);
 if (results.some((r) => !r.pass)) process.exit(1);
-console.log("LIVE PROBE GREEN");
+console.log(edge ? "EDGE PROBE GREEN" : "LIVE PROBE GREEN");

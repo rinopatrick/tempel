@@ -52,10 +52,11 @@ npm ci
 npx tsc --noEmit
 npm test -- --run
 npm run build
+bash scripts/verify-release.sh
 TEMPEL_DB_PATH=/var/lib/tempel/secrets.db PORT=3111 node_modules/.bin/next start
 ```
 
-Run the [launch probe](docs/security-acceptance.md#launch-gate) against an isolated instance, not the production database.
+The [staging setup](docs/staging.md) runs the same app behind a TLS proxy and includes the [edge checks](docs/security-acceptance.md#launch-gate).
 
 `GET /api/health` answers `200 { "status": "ok", "store": "file" }` for a
 healthy production File Vault, or `503 { "status": "unavailable", "store": "file" }`

@@ -39,6 +39,9 @@ Reproducible release checklist, same order every time:
    A 503 `{"status":"unavailable","store":"file"}` means the File Vault
    failed to initialize.
 
+The [staging Compose setup](../staging.md) implements this target with Caddy and
+a persistent SQLite volume on one host.
+
 ## Consequences
 
 The limiter keeps its current header order on this target. A move to
