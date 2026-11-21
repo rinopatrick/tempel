@@ -3,6 +3,7 @@ import {
   RATE_LIMIT_GET_PER_MINUTE,
   RATE_LIMIT_POST_PER_MINUTE,
   RATE_LIMIT_WINDOW_MS,
+  bucketCount,
   checkRateLimit,
   clientIp,
   resetRateLimits,
@@ -56,6 +57,54 @@ describe("rate limit", () => {
       checkRateLimit("9.9.9.9", "post-secret", t0 + RATE_LIMIT_WINDOW_MS + 1)
         .allowed,
     ).toBe(true);
+  });
+
+  it("evicts buckets of idle IPs once the window passes", () => {
+    const t0 = 2_000_000;
+    for (let i = 0; i < 50; i += 1) {
+      checkRateLimit(`10.0.0.${i}`, "get-secret", t0);
+    }
+    expect(bucketCount()).toBe(50);
+    checkRateLimit("10.0.1.1", "post-secret", t0 + RATE_LIMIT_WINDOW_MS + 1);
+    expect(bucketCount()).toBe(1);
+  });
+
+  it("keeps buckets that still have hits inside the window", () => {
+    const t0 = 4_000_000;
+    checkRateLimit("8.8.8.8", "post-secret", t0);
+    checkRateLimit("8.8.4.4", "post-secret", t0 + RATE_LIMIT_WINDOW_MS / 2);
+    checkRateLimit("1.0.0.1", "get-secret", t0 + RATE_LIMIT_WINDOW_MS + 1);
+    expect(bucketCount()).toBe(2);
+  });
+
+  it("keeps a bucket with live hits after the clock steps back", () => {
+    const t0 = 5_000_000;
+    checkRateLimit("6.6.6.6", "post-secret", t0);
+    checkRateLimit("6.6.6.6", "post-secret", t0 - 1_000);
+    checkRateLimit(
+      "1.0.0.2",
+      "get-secret",
+      t0 - 1_000 + RATE_LIMIT_WINDOW_MS + 1,
+    );
+    expect(bucketCount()).toBe(2);
+  });
+
+  it("does not shorten the window when the clock steps back", () => {
+    const t0 = 6_000_000;
+    const behind = t0 - 30_000;
+    checkRateLimit("1.0.0.3", "get-secret", t0);
+    for (let i = 0; i < RATE_LIMIT_POST_PER_MINUTE; i += 1) {
+      checkRateLimit("6.6.6.7", "post-secret", behind);
+    }
+    expect(
+      checkRateLimit(
+        "6.6.6.7",
+        "post-secret",
+        behind + RATE_LIMIT_WINDOW_MS + 1,
+      ).allowed,
+    ).toBe(false);
+    checkRateLimit("1.0.0.4", "get-secret", t0 + RATE_LIMIT_WINDOW_MS + 1);
+    expect(bucketCount()).toBe(1);
   });
 
   it("prefers the first forwarded address", () => {
