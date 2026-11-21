@@ -16,6 +16,15 @@ import Composer from "./composer";
 
 const createShareLinkMock = vi.mocked(createShareLink);
 
+async function renderComposerWithShareLink(user: ReturnType<typeof userEvent.setup>) {
+  const link = `https://tempel.test/s/server-id-1#${"A".repeat(43)}`;
+  createShareLinkMock.mockResolvedValue(link);
+  render(<Composer />);
+  await user.type(screen.getByRole("textbox", { name: "Secret" }), "test secret");
+  await user.click(screen.getByRole("button", { name: "Buat link rahasia" }));
+  await screen.findByText(link);
+}
+
 describe("<Composer />", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -57,7 +66,7 @@ describe("<Composer />", () => {
     const link = `https://tempel.test/s/server-id-1#${"A".repeat(43)}`;
     createShareLinkMock
       .mockResolvedValueOnce(link)
-      .mockRejectedValueOnce(new Error("server down"));
+      .mockRejectedValueOnce(new Error("HTTP 500."));
     render(<Composer />);
 
     await user.type(
@@ -69,7 +78,7 @@ describe("<Composer />", () => {
     await user.click(screen.getByRole("button", { name: /buat link/i }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe("Gagal membuat link: server down");
+    expect(alert.textContent).toBe("Gagal membuat link: HTTP 500.");
     expect(screen.queryByText(link)).toBeNull();
   });
 
@@ -159,6 +168,37 @@ describe("<Composer />", () => {
     expect(globalsCss).toMatch(/IBM Plex Mono/);
     const layoutTsx = readFileSync("src/app/layout.tsx", "utf8");
     expect(layoutTsx).toMatch(/fonts\.googleapis/);
+  });
+
+  it("returns to the copy action if another copy fails after a success", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    writeText
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("denied"));
+    await renderComposerWithShareLink(user);
+
+    await user.click(screen.getByRole("button", { name: "Salin link" }));
+    await user.click(await screen.findByRole("button", { name: "Tersalin" }));
+
+    expect(await screen.findByRole("alert")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Salin link" })).not.toBeNull();
+  });
+
+  it("clears the copy error after a successful retry", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    writeText
+      .mockRejectedValueOnce(new Error("denied"))
+      .mockResolvedValueOnce(undefined);
+    await renderComposerWithShareLink(user);
+
+    await user.click(screen.getByRole("button", { name: "Salin link" }));
+    expect(await screen.findByRole("alert")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "Salin link" }));
+
+    expect(await screen.findByRole("button", { name: "Tersalin" })).not.toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("renders the secret input in the mono class", () => {

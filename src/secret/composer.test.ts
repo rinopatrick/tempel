@@ -82,6 +82,6 @@ describe("createShareLink", () => {
         secret: "db-prod-9f2k",
         ttlSeconds: 3600,
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/^HTTP 500\.$/);
   });
 });

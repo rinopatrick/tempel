@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { createShareLink, TTL_OPTIONS } from "@/secret/composer";
 
+const COPY_FAILED = "Penyalinan gagal. Salin link secara manual.";
+
 export default function Composer() {
   const [secret, setSecret] = useState("");
   const [ttlSeconds, setTtlSeconds] = useState<number>(TTL_OPTIONS[0].seconds);
@@ -38,8 +40,10 @@ export default function Composer() {
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
+      setError((current) => (current === COPY_FAILED ? null : current));
     } catch {
-      setError("Penyalinan gagal. Salin link secara manual.");
+      setCopied(false);
+      setError(COPY_FAILED);
     }
   }
 
