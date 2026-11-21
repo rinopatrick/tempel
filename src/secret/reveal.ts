@@ -26,6 +26,13 @@ export class RevealExpiredError extends Error {
   }
 }
 
+export class RevealUnavailableError extends Error {
+  constructor(message = "Link tidak tersedia.") {
+    super(message);
+    this.name = "RevealUnavailableError";
+  }
+}
+
 function validId(id: string): boolean {
   return /^[A-Za-z0-9_-]{1,64}$/.test(id);
 }
@@ -41,6 +48,7 @@ export async function revealSecret({ id, key }: RevealSecretInput): Promise<stri
   } catch {
     throw new RevealNetworkError();
   }
+  if (res.status === 404) throw new RevealUnavailableError();
   if (res.status === 410) {
     const body = (await res.json().catch(() => null)) as {
       reason?: unknown;

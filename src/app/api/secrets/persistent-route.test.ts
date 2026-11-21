@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/secrets/route";
 import { GET } from "@/app/api/secrets/[id]/route";
+import { resetRateLimits } from "@/secret/rate-limit";
 import { resetSharedVault } from "@/secret/vault";
 
 function jsonRequest(body: unknown): Request {
@@ -25,6 +26,7 @@ describe("routes against the persistent store", () => {
     vi.stubEnv("TEMPEL_DB_PATH", join(dbDirectory, "secrets.db"));
     vi.stubEnv("TEMPEL_STORE", undefined);
     resetSharedVault();
+    resetRateLimits();
   });
 
   afterEach(() => {
@@ -113,16 +115,16 @@ describe("routes against the persistent store", () => {
     }
   });
 
-  it("returns 410 unknown for an id that was never stored", async () => {
+  it("returns 404 for an id that was never stored", async () => {
     const id = "a".repeat(22);
     const res = await GET(new Request(`http://localhost/api/secrets/${id}`), {
       params: Promise.resolve({ id }),
     });
-    expect(res.status).toBe(410);
-    expect(await res.json()).toEqual({ error: "gone", reason: "unknown" });
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "unknown" });
   });
 
-  it("wins once end to end: first reveal 200, second 410 burned, unknown 410", async () => {
+  it("wins once end to end: first reveal 200, second 410 burned, unknown 404", async () => {
     const created = await POST(
       jsonRequest({ ciphertext: "Y2k", iv: "aXY", ttlSeconds: 3_600 }),
     );
@@ -147,11 +149,39 @@ describe("routes against the persistent store", () => {
       new Request(`http://localhost/api/secrets/${foreign}`),
       { params: Promise.resolve({ id: foreign }) },
     );
-    expect(unknown.status).toBe(410);
+    expect(unknown.status).toBe(404);
     expect(await unknown.json()).toEqual({
-      error: "gone",
-      reason: "unknown",
+      error: "unknown",
     });
+  });
+
+  it("replies 410 for a retained tombstone and 404 after a new store purges it", async () => {
+    const created = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    const get = () => GET(new Request(`http://localhost/api/secrets/${id}`), {
+      params: Promise.resolve({ id }),
+    });
+    const burnedAt = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const clock = vi.spyOn(Date, "now").mockReturnValue(burnedAt);
+    try {
+      expect((await get()).status).toBe(200);
+      clock.mockReturnValue(burnedAt + sevenDaysMs - 1);
+      const retained = await get();
+      expect(retained.status).toBe(410);
+      expect(await retained.json()).toEqual({ error: "gone", reason: "burned" });
+
+      clock.mockReturnValue(burnedAt + sevenDaysMs);
+      const next = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
+      expect(next.status).toBe(201);
+      const purged = await get();
+      expect(purged.status).toBe(404);
+      expect(purged.headers.get("Cache-Control")).toBe("no-store");
+      expect(await purged.json()).toEqual({ error: "unknown" });
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("concurrent reveals yield one winner with losers burned", async () => {

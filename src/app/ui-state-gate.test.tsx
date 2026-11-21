@@ -19,6 +19,7 @@ import {
   RevealBurnedError,
   RevealExpiredError,
   RevealNetworkError,
+  RevealUnavailableError,
 } from "@/secret/reveal";
 import Composer from "./composer";
 import { RevealView, type RevealState } from "./s/reveal-view";
@@ -209,6 +210,13 @@ const revealStates: Record<RevealState["status"], Reach> = {
       },
       () => screen.findByRole("heading", { name: /kedaluwarsa/i }),
     ),
+  unavailable: () =>
+    revealInto(
+      async () => {
+        throw new RevealUnavailableError();
+      },
+      () => screen.findByRole("heading", { name: "Link tidak tersedia." }),
+    ),
   failed: () =>
     revealInto(
       async () => {
@@ -228,7 +236,7 @@ describe("UI state gate against the rendered states (#42)", () => {
     window.location.hash = "";
   });
 
-  it("names the eleven states #42 gates: five composer, six reveal", () => {
+  it("names the twelve gated states: five composer, seven reveal", () => {
     expect(gateRows("Composer, from").map((r) => r.state)).toEqual([
       ...COMPOSER_STATES,
     ]);
@@ -238,10 +246,11 @@ describe("UI state gate against the rendered states (#42)", () => {
       "done",
       "burned",
       "expired",
+      "unavailable",
       "failed",
     ]);
-    expect(GATE).toMatch(/^## The eleven states$/m);
-    expect(GATE).toMatch(/one screenshot per state — eleven in total/);
+    expect(GATE).toMatch(/^## The twelve states$/m);
+    expect(GATE).toMatch(/one screenshot per state — twelve in total/);
   });
 
   it("covers every status the reveal view can reach", () => {
@@ -278,7 +287,7 @@ describe("UI state gate against the rendered states (#42)", () => {
     const signOff = GATE.slice(GATE.indexOf("## Sign-off"));
     const boxes = signOff.match(/^- \[[ xX]\] .+$/gm) ?? [];
     expect(boxes.length).toBeGreaterThanOrEqual(4);
-    expect(boxes.some((b) => /eleven screenshots/i.test(b))).toBe(true);
+    expect(boxes.some((b) => /twelve screenshots/i.test(b))).toBe(true);
     for (const box of boxes) expect(box).toMatch(/^- \[ \] /);
   });
 

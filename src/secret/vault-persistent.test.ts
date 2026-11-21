@@ -1,15 +1,167 @@
 // @vitest-environment node
 
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { encryptSecret } from "./crypto";
 import { createFileVault } from "./vault";
 
 function tmpDb(): string {
   return join(mkdtempSync(join(tmpdir(), "tempel-vault-")), "secrets.db");
 }
+
+describe("createFileVault (cleanup on store)", () => {
+  const envelope = { ciphertext: "Y2k", iv: "aXY" };
+  const start = 1_000_000_000;
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("clears a never-read row at expiry while preserving a live envelope", () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start);
+    const path = tmpDb();
+    const vault = createFileVault(path);
+    vault.store("expiring", envelope, start + 1);
+    vault.store("live", envelope, start + 2);
+
+    clock.mockReturnValue(start + 1);
+    vault.store("next", envelope);
+
+    const db = new DatabaseSync(path, { readOnly: true });
+    try {
+      const row = db.prepare("SELECT ciphertext, iv, state FROM secrets WHERE id = ?");
+      expect(row.get("expiring")).toEqual({ ciphertext: "", iv: "", state: "expired" });
+      expect(row.get("live")).toEqual({ ...envelope, state: "created" });
+    } finally {
+      db.close();
+    }
+    expect(vault.reveal("live")).toEqual(envelope);
+  });
+
+  it.each(["burned", "expired"] as const)("purges %s at the seven-day boundary", (reason) => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start - 1);
+    const vault = createFileVault(tmpDb());
+    vault.store("original", envelope, reason === "expired" ? start : start + 3_600_000);
+    clock.mockReturnValue(start);
+    if (reason === "burned") expect(vault.reveal("original")).toEqual(envelope);
+
+    clock.mockReturnValue(start + sevenDaysMs - 1);
+    vault.store("within-window", envelope);
+    expect(vault.goneReason("original")).toBe(reason);
+
+    clock.mockReturnValue(start + sevenDaysMs);
+    vault.store("after-window", envelope);
+    expect(vault.goneReason("original")).toBe("unknown");
+  });
+
+  it("removes expired ciphertext from the SQLite file after cleanup and checkpoint", () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start);
+    const path = tmpDb();
+    const vault = createFileVault(path);
+    const sentinel = "tempel-expiration-ciphertext-sentinel";
+    vault.store("original", { ...envelope, ciphertext: sentinel.repeat(10) }, start + 1);
+    vault.store("live", envelope);
+
+    const db = new DatabaseSync(path);
+    try {
+      const checkpoint = db.prepare("PRAGMA wal_checkpoint(TRUNCATE)");
+      expect(checkpoint.get()?.busy).toBe(0);
+      expect(readFileSync(path).includes(sentinel)).toBe(true);
+
+      clock.mockReturnValue(start + 1);
+      vault.store("next", envelope);
+      expect(vault.goneReason("original")).toBe("expired");
+      expect(checkpoint.get()?.busy).toBe(0);
+      expect(readFileSync(path).includes(sentinel)).toBe(false);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("opens the legacy schema and retains old burns based on their expiry", () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start + sevenDaysMs - 1);
+    const path = tmpDb();
+    const db = new DatabaseSync(path);
+    try {
+      db.exec(`
+        CREATE TABLE secrets (
+          id TEXT PRIMARY KEY,
+          ciphertext TEXT NOT NULL,
+          iv TEXT NOT NULL,
+          expires_at INTEGER NOT NULL,
+          state TEXT NOT NULL
+        );
+      `);
+      db.prepare("INSERT INTO secrets VALUES ('legacy', '', '', ?, 'burned')").run(start);
+    } finally {
+      db.close();
+    }
+
+    const vault = createFileVault(path);
+    vault.store("new", envelope);
+    expect(vault.goneReason("legacy")).toBe("burned");
+    expect(vault.reveal("new")).toEqual(envelope);
+
+    clock.mockReturnValue(start + sevenDaysMs);
+    const reopened = createFileVault(path);
+    reopened.store("next", envelope);
+    expect(reopened.goneReason("legacy")).toBe("unknown");
+    expect(reopened.goneReason("new")).toBe("burned");
+  });
+
+  it("drains the expiry and purge backlogs across successive stores", () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start);
+    const path = tmpDb();
+    const vault = createFileVault(path);
+    for (let i = 0; i < 101; i += 1) {
+      vault.store(`burned-${i}`, envelope);
+      vault.reveal(`burned-${i}`);
+      vault.store(`expiring-${i}`, envelope, start + sevenDaysMs);
+    }
+
+    clock.mockReturnValue(start + sevenDaysMs);
+    const db = new DatabaseSync(path, { readOnly: true });
+    try {
+      const count = db.prepare("SELECT count(*) AS rows FROM secrets WHERE id LIKE ? AND state = ?");
+      vault.store("first", envelope);
+      expect(count.get("expiring-%", "created")).toEqual({ rows: 1 });
+      expect(count.get("burned-%", "burned")).toEqual({ rows: 1 });
+      vault.store("second", envelope);
+      expect(count.get("expiring-%", "created")).toEqual({ rows: 0 });
+      expect(count.get("expiring-%", "expired")).toEqual({ rows: 101 });
+      expect(count.get("burned-%", "burned")).toEqual({ rows: 0 });
+    } finally {
+      db.close();
+    }
+  });
+
+  it.each(["UPDATE", "DELETE"] as const)("stores a live secret when cleanup %s fails", (operation) => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start - 1);
+    const path = tmpDb();
+    const vault = createFileVault(path);
+    vault.store("stale", envelope, start);
+    clock.mockReturnValue(start);
+    if (operation === "DELETE") expect(vault.goneReason("stale")).toBe("expired");
+    clock.mockReturnValue(start + sevenDaysMs);
+
+    const db = new DatabaseSync(path);
+    try {
+      db.exec(`
+        CREATE TRIGGER reject_cleanup BEFORE ${operation} ON secrets
+        WHEN OLD.id = 'stale'
+        BEGIN SELECT RAISE(ROLLBACK, 'cleanup failed'); END;
+      `);
+    } finally {
+      db.close();
+    }
+    const logError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vault.store("new", envelope);
+    expect(vault.reveal("new")).toEqual(envelope);
+    expect(logError).toHaveBeenCalledOnce();
+  });
+});
 
 describe("createFileVault (persistent store)", () => {
   it("survives a restart: store, reopen, reveal", async () => {

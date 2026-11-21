@@ -5,7 +5,7 @@ Screenshots are PR evidence. They never enter the repo, and no visual
 harness ships: the component tests already pin each state at the rendered
 seam, so this gate adds proof of how the states look, not another runner.
 
-## The eleven states
+## The twelve states
 
 Composer, from `src/app/composer.tsx`:
 
@@ -26,6 +26,7 @@ Reveal, from `src/app/s/reveal-view.tsx`:
 | done | `Rahasia terbuka. Link sudah hangus.`, Secret in a paper panel, `Didekripsi lokal. Salin sekarang.` |
 | burned | `Link sudah hangus.` plus the already-opened explanation |
 | expired | `Link kedaluwarsa.` plus the ask-the-sender next step |
+| unavailable | `Link tidak tersedia.` plus `Minta pengirim buat link baru.`, with no retry |
 | failed | `Link tidak bisa dibuka.` plus the reason, retry only on a network error |
 
 Each state renders in the canvas tokens from `src/app/tokens.ts`. A new
@@ -33,12 +34,12 @@ color, font, or size needs a canvas diff first.
 
 ## Capture path
 
-The eleven states come from the running app, driven in a real browser:
+The twelve states come from the running app, driven in a real browser:
 
 1. Start the app with `npm run dev`.
 2. Open it in a real browser and drive the composer and reveal flows
    into each state named above.
-3. Capture one screenshot per state — eleven in total.
+3. Capture one screenshot per state — twelve in total.
 4. Attach them to the PR only. No capture file, image, or harness is
    committed to the repo.
 
@@ -47,7 +48,7 @@ The eleven states come from the running app, driven in a real browser:
 Copy this checklist into the PR body and tick it there. The repo file stays
 unticked; the signed copy lives with the PR it gates.
 
-- [ ] Eleven screenshots attached to the PR, one per state named above
+- [ ] Twelve screenshots attached to the PR, one per state named above
 - [ ] `npm test -- --run` green
 - [ ] `npx tsc --noEmit` clean
 - [ ] `npm run build` lists `/api/secrets` and `/api/secrets/[id]`

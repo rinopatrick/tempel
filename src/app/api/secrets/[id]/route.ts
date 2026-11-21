@@ -33,6 +33,9 @@ export async function GET(
     const envelope = vault.reveal(id);
     if (envelope === null) {
       const reason = vault.goneReason(id);
+      if (reason === "unknown") {
+        return noStoreJson({ error: "unknown" }, { status: 404 });
+      }
       return noStoreJson({ error: "gone", reason }, { status: 410 });
     }
     return noStoreJson(envelope);

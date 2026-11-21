@@ -211,6 +211,28 @@ describe("<RevealView />", () => {
     ).toBeNull();
   });
 
+  it("shows a terminal unavailable view when the API no longer has the link", async () => {
+    const user = userEvent.setup();
+    const actual = await vi.importActual<typeof import("@/secret/reveal")>("@/secret/reveal");
+    revealMock.mockImplementationOnce(actual.revealSecret);
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ error: "unknown" }), { status: 404 }),
+    ));
+    try {
+      render(<RevealView id={"a".repeat(22)} />);
+      await user.click(
+        screen.getByRole("button", { name: /tampilkan dan hapus link/i }),
+      );
+
+      expect(await screen.findByRole("heading", { name: "Link tidak tersedia." })).not.toBeNull();
+      expect(screen.getByText("Minta pengirim buat link baru.")).not.toBeNull();
+      expect(screen.getByRole("alert")).not.toBeNull();
+      expect(screen.queryByRole("button")).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("allows retry only when no response was received", async () => {
     const user = userEvent.setup();
     revealMock.mockRejectedValueOnce(new RevealNetworkError());

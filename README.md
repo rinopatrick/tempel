@@ -16,6 +16,8 @@ Tempel shares passwords and API keys through links that work once. Your browser 
 
 Every secret runs `created → viewable → burned`, or `created → expired`. Nothing leaves `burned` or `expired`.
 
+On each new store, SQLite clears a batch of expired envelopes and removes a batch of tombstones at least seven days past the burn or expiry. Once removed, the link returns `404` instead of `410`. There is no background cleanup.
+
 ## Abuse limits
 
 Each IP gets 10 creates and 60 reveals per minute. Past the cap the API answers `429` with a `Retry-After` header. The IP comes from `cf-connecting-ip` first, then `x-vercel-forwarded-for`, `x-forwarded-for`, and `x-real-ip`. Run behind a proxy you trust, because a forged header sends the cap after the wrong address. `docs/adr/0001-deploy-target-and-release.md` records the deploy target this order assumes.
