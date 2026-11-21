@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -94,9 +96,7 @@ describe("createFileVault (persistent store)", () => {
     // the statements and transactions underneath.
     const dir = mkdtempSync(join(tmpdir(), "tempel-race-"));
     const bundle = join(dir, "vault.cjs");
-    // esbuild refuses to run inside the jsdom test realm (its Uint8Array
-    // invariant check fails there), so the bundle builds in a worker
-    // thread, which runs real Node. One build, then N racers require it.
+    // Build the bundle once in a worker before the racers require it.
     const { Worker } = await import("node:worker_threads");
     const runWorker = <T>(source: string, workerData: object): Promise<T> =>
       new Promise<T>((resolve, reject) => {
