@@ -108,6 +108,39 @@ describe("<Composer />", () => {
     ).not.toBeNull();
   });
 
+  it("keeps the earlier link and clears the old alert while a resubmit is busy", async () => {
+    const user = userEvent.setup();
+    const link = `https://tempel.test/s/server-id-1#${"A".repeat(43)}`;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn(async () => {
+          throw new Error("denied");
+        }),
+      },
+    });
+    createShareLinkMock.mockResolvedValueOnce(link);
+    createShareLinkMock.mockReturnValueOnce(new Promise<string>(() => {}));
+    render(<Composer />);
+
+    await user.type(
+      screen.getByPlaceholderText(/tempel password atau api key/i),
+      "db-prod-9f2k",
+    );
+    await user.click(screen.getByRole("button", { name: /buat link/i }));
+    await screen.findByText(link);
+    await user.click(screen.getByRole("button", { name: /salin/i }));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Penyalinan gagal. Salin link secara manual.",
+    );
+
+    await user.click(screen.getByRole("button", { name: /buat link/i }));
+
+    expect(await screen.findByRole("button", { name: /membuat/i })).not.toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText(link)).not.toBeNull();
+  });
+
   it("renders the done link in mono break-all with a copy button", async () => {
     const user = userEvent.setup();
     const key = "A".repeat(43);
