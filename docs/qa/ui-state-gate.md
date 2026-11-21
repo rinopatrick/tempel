@@ -30,7 +30,8 @@ Reveal, from `src/app/s/reveal-view.tsx`:
 | failed | `Link tidak bisa dibuka.` plus the reason, retry only on a network error |
 
 Each state renders in the canvas tokens from `src/app/tokens.ts`. A new
-color, font, or size needs a canvas diff first.
+color, font, or size needs a canvas diff first. The [canvas token snapshot](../design/canvas-tokens.md)
+records the reference values for review.
 
 ## Capture path
 
