@@ -200,7 +200,8 @@ describe("<Composer />", () => {
     expect(globalsCss).toMatch(/Inter/);
     expect(globalsCss).toMatch(/IBM Plex Mono/);
     const layoutTsx = readFileSync("src/app/layout.tsx", "utf8");
-    expect(layoutTsx).toMatch(/fonts\.googleapis/);
+    expect(layoutTsx).toMatch(/next\/font\/google/);
+    expect(layoutTsx).not.toMatch(/fonts\.googleapis/);
   });
 
   it("returns to the copy action if another copy fails after a success", async () => {

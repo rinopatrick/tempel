@@ -2,7 +2,7 @@
 
 /* Mono wiring (grill #10, issue #61): font-mono consumes the canvas token
    instead of Tailwind's default mono stack. Wiring only — no token change. */
-@theme {
+@theme inline {
   --font-mono: var(--tempel-mono);
 }
 

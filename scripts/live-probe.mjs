@@ -132,6 +132,48 @@ check(
   `status=${floodRes?.status} retry-after=${floodRes?.headers.get("retry-after")}`,
 );
 
+// Security headers (#70): every page and API route, never X-Powered-By.
+// Exact production CSP values, so a dev build ('unsafe-eval') or a widened
+// source list fails the probe.
+const EXPECTED_CSP = {
+  "default-src": "'self'",
+  "script-src": "'self' 'unsafe-inline'",
+  "style-src": "'self' 'unsafe-inline'",
+  "img-src": "'self' data: blob:",
+  "font-src": "'self'",
+  "connect-src": "'self'",
+  "frame-ancestors": "'none'",
+  "base-uri": "'none'",
+  "form-action": "'self'",
+  "object-src": "'none'",
+};
+function parseCsp(header) {
+  const directives = {};
+  for (const part of header.split(";")) {
+    const [name, ...sources] = part.trim().split(/\s+/);
+    if (name) directives[name] = sources.join(" ");
+  }
+  return directives;
+}
+for (const path of ["/", `/s/${"h".repeat(ID_LEN)}`, "/api/health"]) {
+  const res = await fetch(`${base}${path}`);
+  await res.text().catch(() => "");
+  const h = res.headers;
+  const csp = parseCsp(h.get("content-security-policy") ?? "");
+  const wrong = Object.keys({ ...EXPECTED_CSP, ...csp }).filter(
+    (d) => csp[d] !== EXPECTED_CSP[d],
+  );
+  check(
+    `security headers ${path}`,
+    wrong.length === 0 &&
+      h.get("x-frame-options") === "DENY" &&
+      h.get("x-content-type-options") === "nosniff" &&
+      h.get("referrer-policy") === "no-referrer" &&
+      !h.has("x-powered-by"),
+    `csp-wrong=${JSON.stringify(wrong.map((d) => `${d}: ${csp[d] ?? "(missing)"}`))} xfo=${h.get("x-frame-options")} xcto=${h.get("x-content-type-options")} referrer=${h.get("referrer-policy")} powered-by=${h.get("x-powered-by")}`,
+  );
+}
+
 for (const r of results) console.log(`${r.pass ? "PASS" : "FAIL"} ${r.name} :: ${r.detail}`);
 if (results.some((r) => !r.pass)) process.exit(1);
 console.log("LIVE PROBE GREEN");
