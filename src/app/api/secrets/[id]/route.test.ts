@@ -31,6 +31,7 @@ describe("GET /api/secrets/[id]", () => {
       params: Promise.resolve({ id }),
     });
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ ciphertext: "Y2k", iv: "aXY" });
   });
 
@@ -42,6 +43,7 @@ describe("GET /api/secrets/[id]", () => {
       params: Promise.resolve({ id }),
     });
     expect(res.status).toBe(410);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ error: "gone", reason: "burned" });
   });
 
