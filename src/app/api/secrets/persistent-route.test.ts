@@ -40,6 +40,7 @@ describe("routes against the persistent store", () => {
     const res = await POST(jsonRequest({ ciphertext: "Y2k", iv: "aXY" }));
 
     expect(res.status).toBe(503);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ error: "store-unavailable" });
   });
 
@@ -54,6 +55,7 @@ describe("routes against the persistent store", () => {
     });
 
     expect(res.status).toBe(503);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ error: "store-unavailable" });
   });
 

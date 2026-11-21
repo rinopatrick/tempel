@@ -31,6 +31,7 @@ describe("GET /api/secrets/[id]", () => {
       params: Promise.resolve({ id }),
     });
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ ciphertext: "Y2k", iv: "aXY" });
   });
 
@@ -42,6 +43,7 @@ describe("GET /api/secrets/[id]", () => {
       params: Promise.resolve({ id }),
     });
     expect(res.status).toBe(410);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({ error: "gone", reason: "burned" });
   });
 
@@ -50,6 +52,7 @@ describe("GET /api/secrets/[id]", () => {
       params: Promise.resolve({ id: "bad!id" }),
     });
     expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(revealMock).not.toHaveBeenCalled();
     expect(goneReasonMock).not.toHaveBeenCalled();
   });
@@ -73,6 +76,7 @@ describe("GET /api/secrets/[id]", () => {
       params: Promise.resolve({ id }),
     });
     expect(res.status).toBe(429);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(res.headers.get("Retry-After")).not.toBeNull();
     expect(await res.json()).toEqual({ error: "rate-limited" });
     expect(revealMock).toHaveBeenCalledTimes(60);
