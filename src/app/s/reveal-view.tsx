@@ -6,6 +6,7 @@ import {
   RevealExpiredError,
   revealSecret,
   RevealNetworkError,
+  RevealUnavailableError,
 } from "@/secret/reveal";
 
 export type RevealState =
@@ -14,6 +15,7 @@ export type RevealState =
   | { status: "done"; secret: string }
   | { status: "burned" }
   | { status: "expired" }
+  | { status: "unavailable" }
   | { status: "failed"; message: string; retry?: boolean };
 
 function fragmentKey(): string {
@@ -49,6 +51,10 @@ export function RevealView({ id }: { id: string }) {
       }
       if (err instanceof RevealExpiredError) {
         setState({ status: "expired" });
+        return;
+      }
+      if (err instanceof RevealUnavailableError) {
+        setState({ status: "unavailable" });
         return;
       }
       setState({
@@ -98,18 +104,21 @@ export function RevealView({ id }: { id: string }) {
     );
   }
 
-  if (state.status === "expired") {
+  if (state.status === "expired" || state.status === "unavailable") {
+    const expired = state.status === "expired";
     return (
-      <section aria-label="Kedaluwarsa" className="flex w-full min-w-0 flex-col gap-6 overflow-x-clip">
-        <p className="text-[13px] font-bold text-[var(--tempel-warn)]">LINK KEDALUWARSA</p>
+      <section aria-label={expired ? "Kedaluwarsa" : "Tidak tersedia"} className="flex w-full min-w-0 flex-col gap-6 overflow-x-clip">
+        <p className="text-[13px] font-bold text-[var(--tempel-warn)]">
+          {expired ? "LINK KEDALUWARSA" : "LINK TIDAK TERSEDIA"}
+        </p>
         <h1 className="text-[40px] font-bold text-[var(--tempel-ink)] md:text-[56px]">
-          Link kedaluwarsa.
+          {expired ? "Link kedaluwarsa." : "Link tidak tersedia."}
         </h1>
         <p role="alert" className="sr-only">
-          Status: link kedaluwarsa, minta link baru.
+          {expired ? "Status: link kedaluwarsa, minta link baru." : "Status: link tidak tersedia, minta link baru."}
         </p>
         <p className="text-[17px] text-[var(--tempel-muted)]">
-          Link ini lewat batas waktu. Minta pengirim buat link baru.
+          {expired ? "Link ini lewat batas waktu. " : ""}Minta pengirim buat link baru.
         </p>
       </section>
     );
