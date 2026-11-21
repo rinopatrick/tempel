@@ -5,6 +5,8 @@ import type { StoredEnvelope } from "./crypto";
 import { nextSecretState, type SecretState } from "./secret-state";
 
 export const DEFAULT_TTL_MS = 3_600_000;
+const TOMBSTONE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const CLEANUP_BATCH_SIZE = 100;
 
 export type GoneReason = "burned" | "expired" | "unknown";
 
@@ -86,8 +88,26 @@ export function createFileVault(dbPath: string): SecretVault {
       ciphertext TEXT NOT NULL,
       iv TEXT NOT NULL,
       expires_at INTEGER NOT NULL,
-      state TEXT NOT NULL
+      state TEXT NOT NULL,
+      gone_at INTEGER
     )`,
+  );
+  const hasGoneAt = db.prepare("SELECT 1 FROM pragma_table_info('secrets') WHERE name = 'gone_at'");
+  if (!hasGoneAt.get()) {
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      if (!hasGoneAt.get()) db.exec("ALTER TABLE secrets ADD COLUMN gone_at INTEGER");
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS secrets_created_expiry ON secrets (expires_at)
+     WHERE state = 'created';
+     CREATE INDEX IF NOT EXISTS secrets_tombstone_age ON secrets (COALESCE(gone_at, expires_at))
+     WHERE state IN ('burned', 'expired')`,
   );
   const storeStmt = db.prepare(
     `INSERT OR REPLACE INTO secrets (id, ciphertext, iv, expires_at, state)
@@ -98,13 +118,27 @@ export function createFileVault(dbPath: string): SecretVault {
     `UPDATE secrets SET ciphertext = '', iv = '', state = 'expired'
      WHERE id = ? AND state = 'created'`,
   );
+  const expireBatchStmt = db.prepare(
+    `UPDATE secrets SET ciphertext = '', iv = '', state = 'expired'
+     WHERE rowid IN (
+       SELECT rowid FROM secrets WHERE state = 'created' AND expires_at <= ?
+       ORDER BY expires_at LIMIT ?
+     )`,
+  );
+  const purgeBatchStmt = db.prepare(
+    `DELETE FROM secrets WHERE rowid IN (
+       SELECT rowid FROM secrets
+       WHERE state IN ('burned', 'expired') AND COALESCE(gone_at, expires_at) <= ?
+       ORDER BY COALESCE(gone_at, expires_at) LIMIT ?
+     )`,
+  );
   // Atomic burn: SELECT the envelope, then flip created -> burned with a
   // conditional UPDATE in the same IMMEDIATE transaction. Only a row that
   // is still live at UPDATE time flips (changes === 1); the loser or an
   // entry whose TTL lapsed mid-call gets null. The winner check below is
   // what keeps the single-open guarantee across processes.
   const burnStmt = db.prepare(
-    `UPDATE secrets SET ciphertext = '', iv = '', state = 'burned'
+    `UPDATE secrets SET ciphertext = '', iv = '', state = 'burned', gone_at = ?
      WHERE id = ? AND state = 'created' AND expires_at > ?`,
   );
 
@@ -122,6 +156,13 @@ export function createFileVault(dbPath: string): SecretVault {
 
   return {
     store(id, envelope, expiresAt = Date.now() + DEFAULT_TTL_MS) {
+      const now = Date.now();
+      try {
+        expireBatchStmt.run(now, CLEANUP_BATCH_SIZE);
+        purgeBatchStmt.run(now - TOMBSTONE_RETENTION_MS, CLEANUP_BATCH_SIZE);
+      } catch (error) {
+        console.error("[tempel] secret cleanup failed", error);
+      }
       storeStmt.run(id, envelope.ciphertext, envelope.iv, expiresAt);
     },
     reveal(id) {
@@ -135,7 +176,8 @@ export function createFileVault(dbPath: string): SecretVault {
           Date.now() < row.expires_at
         ) {
           claimed = { ciphertext: row.ciphertext, iv: row.iv };
-          const burned = burnStmt.run(id, Date.now());
+          const burnedAt = Date.now();
+          const burned = burnStmt.run(burnedAt, id, burnedAt);
           if (Number(burned.changes) !== 1) {
             claimed = null;
             burnIfExpired(id, row);

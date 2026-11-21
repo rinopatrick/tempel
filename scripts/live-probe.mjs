@@ -58,8 +58,8 @@ const unknownId = "a".repeat(22);
 const unknown = await fetch(`${base}/api/secrets/${unknownId}`);
 const unknownJson = await unknown.json().catch(() => ({}));
 check(
-  "410 unknown",
-  unknown.status === 410 && unknownJson.reason === "unknown",
+  "404 unknown",
+  unknown.status === 404 && unknownJson.error === "unknown",
   `status=${unknown.status} body=${JSON.stringify(unknownJson)}`,
 );
 

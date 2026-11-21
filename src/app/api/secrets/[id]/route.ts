@@ -24,9 +24,13 @@ export async function GET(
   if (invalidId(id)) {
     return NextResponse.json({ error: "unknown" }, { status: 404 });
   }
-  const envelope = getSharedVault().reveal(id);
+  const vault = getSharedVault();
+  const envelope = vault.reveal(id);
   if (envelope === null) {
-    const reason = getSharedVault().goneReason(id);
+    const reason = vault.goneReason(id);
+    if (reason === "unknown") {
+      return NextResponse.json({ error: "unknown" }, { status: 404 });
+    }
     return NextResponse.json({ error: "gone", reason }, { status: 410 });
   }
   return NextResponse.json(envelope);
