@@ -12,6 +12,14 @@ vi.mock("@/secret/vault", () => ({
 }));
 
 import { GET } from "./route";
+import * as route from "./route";
+
+function headRequest(id: string) {
+  const handler = (route as { HEAD?: typeof GET }).HEAD ?? GET;
+  return handler(new Request(`http://localhost/api/secrets/${id}`, { method: "HEAD" }), {
+    params: Promise.resolve({ id }),
+  });
+}
 
 function getRequest(id: string): Request {
   return new Request(`http://localhost/api/secrets/${id}`);
@@ -23,6 +31,39 @@ describe("GET /api/secrets/[id]", () => {
     resetRateLimits();
     goneReasonMock.mockReturnValue("burned");
   });
+
+  it("rejects HEAD without consuming the first reveal", async () => {
+    const id = "a".repeat(22);
+    const envelope = { ciphertext: "Y2k", iv: "aXY" };
+    revealMock.mockReturnValueOnce(envelope).mockReturnValue(null);
+
+    const head = await headRequest(id);
+    expect.soft(head.status).toBe(405);
+    expect.soft(head.headers.get("Allow")).toBe("GET");
+    expect.soft(await head.text()).toBe("");
+    expect.soft(revealMock).not.toHaveBeenCalled();
+    expect.soft(goneReasonMock).not.toHaveBeenCalled();
+
+    const res = await GET(getRequest(id), { params: Promise.resolve({ id }) });
+    expect.soft(res.status).toBe(200);
+    expect.soft(await res.json()).toEqual(envelope);
+  });
+
+  it.each(["unknown", "burned", "expired", "malformed"])(
+    "rejects HEAD for a %s id without touching the vault",
+    async (reason) => {
+      const id = reason === "malformed" ? "bad!id" : "a".repeat(22);
+      revealMock.mockReturnValue(null);
+      goneReasonMock.mockReturnValue(reason);
+
+      const res = await headRequest(id);
+      expect(res.status).toBe(405);
+      expect(res.headers.get("Allow")).toBe("GET");
+      expect(await res.text()).toBe("");
+      expect(revealMock).not.toHaveBeenCalled();
+      expect(goneReasonMock).not.toHaveBeenCalled();
+    },
+  );
 
   it("returns the envelope on first reveal", async () => {
     const id = "a".repeat(22);
