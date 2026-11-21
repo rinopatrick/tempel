@@ -6,6 +6,10 @@ function invalidId(id: unknown): boolean {
   return typeof id !== "string" || !/^[A-Za-z0-9_-]{22}$/.test(id);
 }
 
+export async function HEAD() {
+  return new Response(null, { status: 405, headers: { Allow: "GET" } });
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
