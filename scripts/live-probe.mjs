@@ -38,6 +38,13 @@ const createdJson = await created.json().catch(() => ({}));
 check("POST 201", created.status === 201, `status=${created.status} id=${createdJson.id}`);
 const id = createdJson.id;
 
+const head = await fetch(`${base}/api/secrets/${id}`, { method: "HEAD" });
+check(
+  "HEAD 405 Allow GET empty body",
+  head.status === 405 && head.headers.get("allow") === "GET" && (await head.text()) === "",
+  `status=${head.status} allow=${head.headers.get("allow")}`,
+);
+
 const first = await fetch(`${base}/api/secrets/${id}`);
 const firstJson = await first.json().catch(() => ({}));
 check(
